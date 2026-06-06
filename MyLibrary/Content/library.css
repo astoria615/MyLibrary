@@ -1709,3 +1709,49 @@ a {
 .issue-damage {
     font-size: 14px;
 }
+/* ADMIN */
+.admin-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+}
+
+    .admin-row:last-child {
+        border-bottom: none;
+    }
+
+.admin-row-title {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.admin-row-sub {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.status-approved {
+    background: rgba(99,153,34,.15);
+    color: #3b6d11;
+}
+
+.status-cancelled {
+    background: rgba(136,135,128,.12);
+    color: var(--text-muted);
+}

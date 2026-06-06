@@ -35,7 +35,9 @@ namespace MyLibrary.Controllers
             if (Request.IsAuthenticated)
             {
                 string role = Session["Role"] != null ? Session["Role"].ToString() : "";
-                if (role == "Librarian" || role == "Admin")
+                if (role == "Admin")
+                    return RedirectToAction("Index", "Admin");
+                if (role == "Librarian")
                     return RedirectToAction("Index", "Librarian");
                 return RedirectToAction("Index", "Guest");
             }

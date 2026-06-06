@@ -1,0 +1,52 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.AdminReaderItem>
+@{ ViewBag.Title = "Manage Readers"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <div class="admin-section-header">
+            <h2>Manage Readers</h2>
+            @using (Html.BeginForm("Readers", "Admin", FormMethod.Get, new { style = "display:flex;gap:8px" }))
+            {
+                <input type="text" name="q" value="@ViewBag.SearchQuery" class="form-input" style="width:220px" placeholder="Search name, email..." />
+                <button type="submit" class="btn-sm-blue">Search</button>
+            }
+        </div>
+        <table class="book-list-table">
+            <thead><tr><th>Code</th><th>Name</th><th>Email</th><th>Borrowed</th><th>Fines</th><th>Expires</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td>@r.ReaderCode</td>
+                        <td>@r.FullName</td>
+                        <td>@r.Email</td>
+                        <td>@r.TotalBorrowed</td>
+                        <td>$@r.TotalFines.ToString("F2")</td>
+                        <td>@(r.MembershipExpiry?.ToString("MMM yyyy") ?? "—")</td>
+                        <td><span class="borrow-status @(r.IsActive ? "status-approved" : "status-rejected")">@(r.IsActive ? "Active" : "Inactive")</span></td>
+                        <td>
+                            <button class="@(r.IsActive ? "btn-reject" : "btn-approve")"
+                                    style="padding:5px 12px;font-size:12px"
+                                    onclick="toggleStatus(@r.UserId, this)">
+                                @(r.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function toggleStatus(userId, btn) {
+    if (!confirm('Toggle account status?')) return;
+    fetch('/Admin/ToggleReaderStatus', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'userId='+userId })
+    .then(r=>r.json()).then(d=>{
+        alert(d.message);
+        if(d.success) location.reload();
+    });
+}
+    </script>
+}

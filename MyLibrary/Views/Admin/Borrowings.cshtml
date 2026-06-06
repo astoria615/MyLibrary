@@ -1,0 +1,51 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.AdminBorrowingItem>
+@{ ViewBag.Title = "Borrowings"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <div class="admin-section-header">
+            <h2>Manage Borrowings</h2>
+        </div>
+        <div class="status-tabs">
+            @foreach (var s in new[] { "All", "Pending", "Approved", "Returned", "Overdue", "Rejected", "Cancelled" })
+            {
+                <a href="@Url.Action("Borrowings","Admin",new{status=s})"
+                   class="status-tab @(ViewBag.CurrentStatus==s?"active":"")">@s</a>
+            }
+        </div>
+        <table class="book-list-table">
+            <thead><tr><th>#</th><th>Reader</th><th>Books</th><th>Borrow Date</th><th>Due</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                @foreach (var b in Model)
+                {
+                    <tr>
+                        <td>#@b.BorrowingId</td>
+                        <td>@b.ReaderName</td>
+                        <td style="max-width:200px;font-size:12px">@string.Join(", ", b.BookTitles)</td>
+                        <td>@b.BorrowDate.ToString("MMM dd, yyyy")</td>
+                        <td>@b.DueDate.ToString("MMM dd, yyyy")</td>
+                        <td><span class="borrow-status status-@b.Status.ToLower()">@b.Status</span></td>
+                        <td>
+                            <select class="form-input" style="width:130px;padding:4px"
+                                    onchange="updateBorrow(@b.BorrowingId, this.value)">
+                                @foreach (var s in new[] { "Pending", "Approved", "Returned", "Overdue", "Rejected", "Cancelled" })
+                                {
+                                    <option value="@s" @(b.Status == s ? "selected" : "")>@s</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function updateBorrow(id, status) {
+    fetch('/Admin/UpdateBorrowingStatus', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'borrowingId='+id+'&status='+encodeURIComponent(status) })
+    .then(r=>r.json()).then(d=>{ if(!d.success) alert('Failed'); });
+}
+    </script>
+}

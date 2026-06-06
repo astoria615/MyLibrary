@@ -1,0 +1,59 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title – Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/Content/library.css?v=7" />
+</head>
+<body>
+    <div class="app-shell">
+        <nav class="sidebar admin-sidebar">
+            <div class="sidebar-brand" style="border-color:#e24b4a;color:#e24b4a">ADMIN</div>
+            <ul class="sidebar-nav">
+                <li>@Html.ActionLink("Dashboard", "Index", "Admin")</li>
+                <li>@Html.ActionLink("Manage Books", "Books", "Admin")</li>
+                <li>@Html.ActionLink("Categories", "Categories", "Admin")</li>
+                <li>@Html.ActionLink("Authors & Publishers", "Authors", "Admin")</li>
+                <li>@Html.ActionLink("Readers", "Readers", "Admin")</li>
+                <li>@Html.ActionLink("Borrowings", "Borrowings", "Admin")</li>
+                <li>@Html.ActionLink("Fine Payments", "Fines", "Admin")</li>
+                <li>@Html.ActionLink("Reviews", "Reviews", "Admin")</li>
+            </ul>
+            <div class="sidebar-divider"></div>
+            <ul class="sidebar-nav sidebar-nav-bottom">
+                <li>@Html.ActionLink("Logout", "Logout", "Account")</li>
+            </ul>
+        </nav>
+
+        <div class="main-area">
+            <div class="topbar">
+                <div style="flex:1"></div>
+                <div class="topbar-right">
+                    @{
+                        string avatarUrl = Session["AvatarUrl"] != null ? Session["AvatarUrl"].ToString() : "";
+                        string fullName = Session["FullName"] != null ? Session["FullName"].ToString() : "Admin";
+                        string avatarSrc = string.IsNullOrEmpty(avatarUrl) ? "/Content/images/default-avatar.png" : avatarUrl;
+                    }
+                    <a href="@Url.Action("Profile","Account")" class="user-chip">
+                        <img src="@avatarSrc" class="user-avatar" alt="avatar"
+                             onerror="this.src='/Content/images/default-avatar.png'" />
+                        <span class="user-name">@fullName</span>
+                    </a>
+                </div>
+            </div>
+            <div class="content-wrap">
+                @if (TempData["Success"] != null)
+                {
+                    <div class="alert-success" style="margin-bottom:16px">@TempData["Success"]</div>
+                }
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+    <script src="~/Scripts/jquery-3.6.0.min.js"></script>
+    <script src="~/Scripts/library.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

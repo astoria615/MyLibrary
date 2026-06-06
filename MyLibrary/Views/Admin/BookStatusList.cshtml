@@ -1,0 +1,44 @@
+﻿@model IEnumerable<MyLibrary.Models.BookStatus>
+@{ ViewBag.Title = "Book Copies"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <div class="admin-section-header">
+            <h2>Copies — @ViewBag.BookTitle</h2>
+            <a href="@Url.Action("Books","Admin")" class="btn-sm-blue" style="text-decoration:none">← Back</a>
+        </div>
+        <table class="book-list-table">
+            <thead>
+                <tr><th>Copy #</th><th>Status</th><th>Notes</th><th>Update</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td>#@c.CopyNumber</td>
+                        <td><span class="borrow-status status-@c.Status.ToLower()">@c.Status</span></td>
+                        <td>@(c.Notes ?? "—")</td>
+                        <td>
+                            <select class="form-input" style="width:140px;padding:4px 8px"
+                                    onchange="updateCopy(@c.StatusId, this.value)">
+                                @foreach (var s in new[] { "Available", "Borrowed", "Reserved", "Lost", "Damaged" })
+                                {
+                                    <option value="@s" @(c.Status == s ? "selected" : "")>@s</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function updateCopy(statusId, status) {
+    fetch('/Admin/UpdateCopyStatus', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'statusId='+statusId+'&status='+encodeURIComponent(status) })
+    .then(r=>r.json()).then(d=>{ if(!d.success) alert('Update failed'); });
+}
+    </script>
+}

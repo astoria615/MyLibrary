@@ -133,4 +133,98 @@ namespace MyLibrary.Models.ViewModels
         public string Message { get; set; }
         public string Icon { get; set; }
     }
+    public class AdminDashboardViewModel
+    {
+        public int TotalBooks { get; set; }
+        public int TotalReaders { get; set; }
+        public int TotalBorrowings { get; set; }
+        public decimal TotalFines { get; set; }
+        public int PendingFines { get; set; }
+        public int ActiveBorrowings { get; set; }
+        public List<AdminBorrowingItem> RecentBorrowings { get; set; }
+        public List<AdminFineItem> RecentFines { get; set; }
+    }
+
+    public class AdminBookItem
+    {
+        public int BookId { get; set; }
+        public string Title { get; set; }
+        public string ISBN { get; set; }
+        public string AuthorName { get; set; }
+        public string CategoryName { get; set; }
+        public int TotalCopies { get; set; }
+        public int AvailableCopies { get; set; }
+        public string CoverUrl { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class AdminBookEditViewModel
+    {
+        public int BookId { get; set; }
+        public string ISBN { get; set; }
+        [Required]
+        public string Title { get; set; }
+        public int? AuthorId { get; set; }
+        public int? CategoryId { get; set; }
+        public int? PublisherId { get; set; }
+        public int? PublishYear { get; set; }
+        public int TotalCopies { get; set; } = 1;
+        public string Language { get; set; } = "English";
+        public int? PageCount { get; set; }
+        public string Description { get; set; }
+        public string ShelfLocation { get; set; }
+        public bool IsFeatured { get; set; }
+        public string CoverUrl { get; set; }
+    }
+
+    public class AdminReaderItem
+    {
+        public int ReaderId { get; set; }
+        public int UserId { get; set; }
+        public string FullName { get; set; }
+        public string Email { get; set; }
+        public string Phone { get; set; }
+        public string ReaderCode { get; set; }
+        public DateTime? MembershipExpiry { get; set; }
+        public int TotalBorrowed { get; set; }
+        public decimal TotalFines { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class AdminBorrowingItem
+    {
+        public int BorrowingId { get; set; }
+        public string ReaderName { get; set; }
+        public string Status { get; set; }
+        public DateTime BorrowDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public DateTime? ReturnDate { get; set; }
+        public List<string> BookTitles { get; set; }
+    }
+
+    public class AdminFineItem
+    {
+        public int FineId { get; set; }
+        public string ReaderName { get; set; }
+        public string FineType { get; set; }
+        public decimal Amount { get; set; }
+        public decimal PaidAmount { get; set; }
+        public string PaymentStatus { get; set; }
+        public DateTime IssuedDate { get; set; }
+        public int BorrowingId { get; set; }
+        public int ReaderId { get; set; }
+        public string TransactionId { get; set; }
+        public DateTime? PaymentDate { get; set; }
+        public string PaymentMethod { get; set; }
+    }
+
+    public class AdminReviewItem
+    {
+        public int ReviewId { get; set; }
+        public string BookTitle { get; set; }
+        public string ReaderName { get; set; }
+        public int Rating { get; set; }
+        public string Comment { get; set; }
+        public DateTime ReviewDate { get; set; }
+    }
 }   

@@ -1,0 +1,89 @@
+﻿@model IEnumerable<MyLibrary.Models.Category>
+@{ ViewBag.Title = "Categories"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <div class="admin-section-header">
+            <h2>Manage Categories</h2>
+            <button class="btn-approve" onclick="openAddCat()">+ Add Category</button>
+        </div>
+        <table class="book-list-table">
+            <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td>@c.CategoryId</td>
+                        <td>@c.CategoryName</td>
+                        <td>@(c.Description ?? "—")</td>
+                        <td><span class="borrow-status @(c.IsActive ? "status-approved" : "status-rejected")">@(c.IsActive ? "Active" : "Inactive")</span></td>
+                        <td>
+                            <button class="btn-sm-blue" onclick="openEditCat(@c.CategoryId, '@c.CategoryName', '@(c.Description ?? "")')">Edit</button>
+                            @if (c.IsActive)
+                            {
+                                <button class="btn-reject" style="padding:4px 10px;font-size:12px;margin-left:4px"
+                                        onclick="deleteCat(@c.CategoryId)">
+                                    Delete
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="add-cat-modal" style="display:none" onclick="this.style.display='none'">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>Add Category</h3>
+        <div class="form-group"><label>Name</label><input type="text" class="form-input" id="new-cat-name" /></div>
+        <div class="form-group"><label>Description</label><input type="text" class="form-input" id="new-cat-desc" /></div>
+        <div class="modal-actions">
+            <button class="btn-approve" onclick="submitAddCat()">Add</button>
+            <button class="btn-reject" onclick="document.getElementById('add-cat-modal').style.display='none'">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-cat-modal" style="display:none" onclick="this.style.display='none'">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>Edit Category</h3>
+        <input type="hidden" id="edit-cat-id" />
+        <div class="form-group"><label>Name</label><input type="text" class="form-input" id="edit-cat-name" /></div>
+        <div class="form-group"><label>Description</label><input type="text" class="form-input" id="edit-cat-desc" /></div>
+        <div class="modal-actions">
+            <button class="btn-approve" onclick="submitEditCat()">Save</button>
+            <button class="btn-reject" onclick="document.getElementById('edit-cat-modal').style.display='none'">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function openAddCat() { document.getElementById('add-cat-modal').style.display='flex'; }
+function openEditCat(id, name, desc) {
+    document.getElementById('edit-cat-id').value = id;
+    document.getElementById('edit-cat-name').value = name;
+    document.getElementById('edit-cat-desc').value = desc;
+    document.getElementById('edit-cat-modal').style.display = 'flex';
+}
+function post(url, data) {
+    return fetch(url, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams(data).toString() }).then(r=>r.json());
+}
+function submitAddCat() {
+    post('/Admin/AddCategory', { name: document.getElementById('new-cat-name').value, description: document.getElementById('new-cat-desc').value })
+    .then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+function submitEditCat() {
+    post('/Admin/EditCategory', { id: document.getElementById('edit-cat-id').value, name: document.getElementById('edit-cat-name').value, description: document.getElementById('edit-cat-desc').value })
+    .then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+function deleteCat(id) {
+    if(!confirm('Delete this category?')) return;
+    post('/Admin/DeleteCategory', {id:id}).then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+    </script>
+}

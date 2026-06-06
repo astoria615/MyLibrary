@@ -1,0 +1,60 @@
+﻿@model MyLibrary.Models.ViewModels.AdminDashboardViewModel
+@{ ViewBag.Title = "Dashboard"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="stat-cards" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card">
+            <span class="stat-card-num">@Model.TotalBooks</span>
+            <span class="stat-card-label">Total Books</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card-num">@Model.TotalReaders</span>
+            <span class="stat-card-label">Total Readers</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card-num">@Model.TotalBorrowings</span>
+            <span class="stat-card-label">Total Borrowings</span>
+        </div>
+        <div class="stat-card stat-card-warn">
+            <span class="stat-card-num">$@Model.TotalFines.ToString("F2")</span>
+            <span class="stat-card-label">Total Fines Issued</span>
+        </div>
+        <div class="stat-card stat-card-blue">
+            <span class="stat-card-num">@Model.ActiveBorrowings</span>
+            <span class="stat-card-label">Active Borrowings</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card-num" style="color:#a32d2d">@Model.PendingFines</span>
+            <span class="stat-card-label">Unpaid Fines</span>
+        </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="lib-section">
+            <h2>Recent Borrowings</h2>
+            @foreach (var b in Model.RecentBorrowings)
+            {
+                <div class="admin-row">
+                    <div>
+                        <span class="admin-row-title">@b.ReaderName</span>
+                        <span class="admin-row-sub">@string.Join(", ", b.BookTitles)</span>
+                    </div>
+                    <span class="borrow-status status-@b.Status.ToLower()">@b.Status</span>
+                </div>
+            }
+        </div>
+        <div class="lib-section">
+            <h2>Recent Fines</h2>
+            @foreach (var f in Model.RecentFines)
+            {
+                <div class="admin-row">
+                    <div>
+                        <span class="admin-row-title">@f.ReaderName</span>
+                        <span class="admin-row-sub">@f.FineType · $@f.Amount.ToString("F2")</span>
+                    </div>
+                    <span class="borrow-status status-@f.PaymentStatus.ToLower().Replace(" ","")">@f.PaymentStatus</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>

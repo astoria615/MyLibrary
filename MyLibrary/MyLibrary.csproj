@@ -122,6 +122,7 @@
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
     <Compile Include="Controllers\AccountController.cs" />
+    <Compile Include="Controllers\AdminController.cs" />
     <Compile Include="Controllers\GuestController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\LibrarianController.cs" />
@@ -217,6 +218,17 @@
     <Content Include="Views\Librarian\FineManagement.cshtml" />
     <Content Include="Views\Librarian\_ViewStart.cshtml" />
     <Content Include="Views\Librarian\ReportIssue.cshtml" />
+    <Content Include="Views\Shared\_AdminLayout.cshtml" />
+    <Content Include="Views\Admin\Index.cshtml" />
+    <Content Include="Views\Admin\Books.cshtml" />
+    <Content Include="Views\Admin\AddBook.cshtml" />
+    <Content Include="Views\Admin\BookStatusList.cshtml" />
+    <Content Include="Views\Admin\Categories.cshtml" />
+    <Content Include="Views\Admin\Authors.cshtml" />
+    <Content Include="Views\Admin\Readers.cshtml" />
+    <Content Include="Views\Admin\Borrowings.cshtml" />
+    <Content Include="Views\Admin\Fines.cshtml" />
+    <Content Include="Views\Admin\Reviews.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

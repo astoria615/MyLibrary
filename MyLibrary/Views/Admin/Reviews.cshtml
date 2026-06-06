@@ -1,0 +1,59 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.AdminReviewItem>
+@{ ViewBag.Title = "Reviews"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <div class="admin-section-header">
+            <h2>Manage Reviews</h2>
+            <div class="text-muted" style="font-size:13px">@Model.Count() visible reviews</div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stat-cards" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
+            @for (int star = 5; star >= 1; star--)
+            {
+                int s = star;
+                int cnt = Model.Count(r => r.Rating == s);
+                <div class="stat-card">
+                    <span class="stat-card-num" style="font-size:20px">@("★".PadRight(s,'★').PadRight(5,'☆'))</span>
+                    <span class="stat-card-label">@cnt reviews</span>
+                </div>
+            }
+        </div>
+
+        <table class="book-list-table">
+            <thead><tr><th>Book</th><th>Reader</th><th>Rating</th><th>Comment</th><th>Date</th><th>Action</th></tr></thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td style="font-size:13px">@r.BookTitle</td>
+                        <td>@r.ReaderName</td>
+                        <td>
+                            @for (int i = 1; i <= 5; i++)
+                            {<span style="color:@(i<=r.Rating?"#fbbf24":"var(--border)")">★</span>}
+                        </td>
+                        <td style="font-size:12px;max-width:200px">@(r.Comment ?? "—")</td>
+                        <td style="font-size:12px">@r.ReviewDate.ToString("MMM dd, yyyy")</td>
+                        <td>
+                            <button class="btn-reject" style="padding:4px 10px;font-size:12px"
+                                    onclick="deleteReview(@r.ReviewId)">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function deleteReview(id) {
+    if (!confirm('Remove this review?')) return;
+    fetch('/Admin/DeleteReview', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'id='+id })
+    .then(r=>r.json()).then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+    </script>
+}

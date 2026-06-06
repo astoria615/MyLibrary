@@ -1,0 +1,79 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.AdminFineItem>
+@{ ViewBag.Title = "Fine Payments"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <h2>Manage Fine Payments</h2>
+        <table class="book-list-table">
+            <thead><tr><th>#</th><th>Reader</th><th>Type</th><th>Amount</th><th>Paid</th><th>Method</th><th>Transaction</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+                @foreach (var f in Model)
+                {
+                    <tr>
+                        <td>#@f.FineId</td>
+                        <td>@f.ReaderName</td>
+                        <td>@f.FineType</td>
+                        <td>$@f.Amount.ToString("F2")</td>
+                        <td>$@f.PaidAmount.ToString("F2")</td>
+                        <td>@(f.PaymentMethod ?? "—")</td>
+                        <td style="font-size:12px">@(f.TransactionId ?? "—")</td>
+                        <td><span class="borrow-status status-@f.PaymentStatus.ToLower().Replace(" ","")">@f.PaymentStatus</span></td>
+                        <td>
+                            @if (f.PaymentStatus != "Paid")
+                            {
+                                <button class="btn-sm-blue" onclick="openConfirm(@f.FineId,'@f.ReaderName',@f.Amount)">Confirm</button>
+                            }
+                            else
+                            {
+                                <span style="font-size:11px;color:var(--text-muted)">✓ @(f.PaymentDate?.ToString("MMM dd") ?? "")</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CONFIRM PAYMENT MODAL -->
+<div class="modal-overlay" id="confirm-modal" style="display:none" onclick="this.style.display='none'">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>Confirm Payment</h3>
+        <p class="text-muted" id="confirm-label"></p>
+        <div class="form-group">
+            <label>Payment Method</label>
+            <select class="form-input" id="confirm-method">
+                <option value="Cash">Cash</option>
+                <option value="VNPay">VNPay</option>
+                <option value="MoMo">MoMo</option>
+                <option value="PayPal">PayPal</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Transaction ID</label>
+            <input type="text" class="form-input" id="confirm-txn" placeholder="Optional" />
+        </div>
+        <input type="hidden" id="confirm-fine-id" />
+        <div class="modal-actions">
+            <button class="btn-approve" onclick="submitConfirm()">Confirm Paid</button>
+            <button class="btn-reject" onclick="document.getElementById('confirm-modal').style.display='none'">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function openConfirm(fineId, reader, amount) {
+    document.getElementById('confirm-fine-id').value = fineId;
+    document.getElementById('confirm-label').textContent = reader + ' · $' + parseFloat(amount).toFixed(2);
+    document.getElementById('confirm-modal').style.display = 'flex';
+}
+function submitConfirm() {
+    var id = document.getElementById('confirm-fine-id').value;
+    var method = document.getElementById('confirm-method').value;
+    var txn = document.getElementById('confirm-txn').value;
+    fetch('/Admin/ConfirmPayment', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'fineId='+id+'&method='+encodeURIComponent(method)+'&transactionId='+encodeURIComponent(txn) })
+    .then(r=>r.json()).then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+    </script>
+}

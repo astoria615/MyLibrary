@@ -1,0 +1,62 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.AdminBookItem>
+@{ ViewBag.Title = "Manage Books"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <div class="admin-section-header">
+            <h2>Manage Books</h2>
+            <div style="display:flex;gap:10px;align-items:center">
+                @using (Html.BeginForm("Books", "Admin", FormMethod.Get, new { style = "display:flex;gap:8px" }))
+                {
+                    <input type="text" name="q" value="@ViewBag.SearchQuery" class="form-input" style="width:220px" placeholder="Search title, ISBN..." />
+                    <button type="submit" class="btn-sm-blue">Search</button>
+                }
+                <a href="@Url.Action("AddBook","Admin")" class="btn-approve" style="text-decoration:none;padding:8px 16px">+ Add Book</a>
+            </div>
+        </div>
+
+        <table class="book-list-table">
+            <thead>
+                <tr><th>Cover</th><th>Title</th><th>Author</th><th>Category</th><th>Copies</th><th>Available</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var b in Model)
+                {
+                    <tr>
+                        <td>
+                            @if (!string.IsNullOrEmpty(b.CoverUrl))
+                            {<img src="@b.CoverUrl" style="width:36px;height:50px;object-fit:cover;border-radius:4px" /> }
+                            else
+                            { <div style="width:36px;height:50px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px">📖</div>}
+                        </td>
+                        <td><strong>@b.Title</strong><br /><small class="text-muted">@b.ISBN</small></td>
+                        <td>@b.AuthorName</td>
+                        <td>@b.CategoryName</td>
+                        <td>@b.TotalCopies</td>
+                        <td>@b.AvailableCopies</td>
+                        <td>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <a href="@Url.Action("EditBook","Admin",new{id=b.BookId})" class="btn-sm-blue">Edit</a>
+                                <a href="@Url.Action("BookStatusList","Admin",new{id=b.BookId})" class="btn-sm-blue" style="background:var(--text-muted)">Copies</a>
+                                <button class="btn-reject" style="padding:4px 10px;font-size:12px"
+                                        onclick="deleteBook(@b.BookId)">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function deleteBook(id) {
+    if (!confirm('Delete this book?')) return;
+    fetch('/Admin/DeleteBook', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'id='+id })
+    .then(r=>r.json()).then(d=>{ alert(d.message); if(d.success) location.reload(); });
+}
+    </script>
+}
