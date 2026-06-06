@@ -1,0 +1,327 @@
+﻿@model MyLibrary.Models.ViewModels.FineManagementViewModel
+@{
+    ViewBag.Title = "Fine Management";
+    Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+}
+
+<div class="lib-dashboard">
+
+    <!-- BORROWING ISSUES -->
+    <div class="lib-section">
+        <h2>Borrowing Issues <span class="text-muted" style="font-size:13px;font-weight:400">(Overdue &amp; Damaged/Lost copies)</span></h2>
+        @if (!Model.OverdueBorrows.Any())
+        {
+            <p class="no-results">No active issues found.</p>
+        }
+        else
+        {
+            <div class="activity-list">
+                @foreach (var item in Model.OverdueBorrows)
+                {
+                    bool isOverdue = item.DueDate < DateTime.Now && item.ReturnDate == null;
+                    int daysOverdue = isOverdue ? (int)(DateTime.Now - item.DueDate).TotalDays : 0;
+                    bool hasDamaged = item.Books.Any(b => b.Condition == "Damaged" || b.Condition == "Lost");
+
+                    <div class="activity-row" onclick="toggleActivity(@item.BorrowingId)">
+                        <div class="activity-title-row">
+                            <div class="activity-left">
+                                <div class="issue-icons">
+                                    @if (isOverdue)
+                                    {
+                                        <span class="issue-badge issue-overdue" title="Overdue">⏰</span>
+                                    }
+                                    @if (hasDamaged)
+                                    {
+                                        <span class="issue-badge issue-damage" title="Damaged/Lost Copy">🔴</span>
+                                    }
+                                </div>
+                                <div>
+                                    <span class="activity-title">
+                                        <strong>@item.ReaderName</strong>
+                                        @if (isOverdue)
+                                        {
+                                            <span class="borrow-status status-overdue">Overdue</span>
+                                            <span class="overdue-days">@daysOverdue days overdue</span>
+                                        }
+                                        @if (hasDamaged)
+                                        {
+                                            <span class="borrow-status status-damaged">⚠ Damaged/Lost</span>
+                                        }
+                                    </span>
+                                    <span class="activity-sub">
+                                        @item.Books.Count book(s) · Due: @item.DueDate.ToString("MMM dd, yyyy")
+                                        @if (hasDamaged)
+                                        {
+                                            <text> ·
+                                                @foreach (var b in item.Books.Where(bk => bk.Condition == "Damaged" || bk.Condition == "Lost"))
+                                                {
+                                                    <span style="color:#e24b4a">@b.Title (@b.Condition)</span>
+                                                }
+                                            </text>
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px">
+                                <button class="btn-approve"
+                                        onclick="event.stopPropagation();openAddFine(@item.BorrowingId, @item.ReaderId, '@Html.Raw(item.ReaderName.Replace("'","\\\'"))', @daysOverdue, @(hasDamaged ? "true" : "false"))">
+                                    + Add Fine
+                                </button>
+                                <span class="activity-chevron" id="chev-@item.BorrowingId">▶</span>
+                            </div>
+                        </div>
+                        <div class="activity-detail" id="detail-@item.BorrowingId"
+                             style="display:none" onclick="event.stopPropagation()">
+                            <div class="activity-books">
+                                @foreach (var book in item.Books)
+                                {
+                                    <div class="activity-book-item">
+                                        <div class="borrow-cover">
+                                            @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                            {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                                            else
+                                            { <div class="cover-placeholder">📖</div>}
+                                        </div>
+                                        <div>
+                                            <span class="activity-book-title">@book.Title</span>
+                                            @if (!string.IsNullOrEmpty(book.Condition))
+                                            {
+                                                <span class="activity-book-cond">Condition: @book.Condition</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- ALL FINES -->
+    <div class="lib-section">
+        <h2>All Fines</h2>
+        <table class="book-list-table fine-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Reader</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Paid</th>
+                    <th>Status</th>
+                    <th>Issued</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Fines)
+                {
+                    <tr>
+                        <td>#@f.FineId</td>
+                        <td>@f.ReaderName</td>
+                        <td>@f.FineType</td>
+                        <td>$@f.Amount.ToString("F2")</td>
+                        <td>$@f.PaidAmount.ToString("F2")</td>
+                        <td>
+                            <span class="borrow-status status-@f.PaymentStatus.ToLower().Replace(" ","")">
+                                @f.PaymentStatus
+                            </span>
+                        </td>
+                        <td>@f.IssuedDate.ToString("MMM dd, yyyy")</td>
+                        <td>
+                            @if (f.PaymentStatus != "Paid")
+                            {
+                                <button class="btn-sm-blue"
+                                        onclick="openMarkPaid(@f.FineId, '@f.ReaderName', @f.Amount)">
+                                    Mark Paid
+                                </button>
+                            }
+                            else
+                            {
+                                <span style="font-size:12px;color:var(--text-muted)">✓ Done</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Fines.Any())
+                {
+                    <tr><td colspan="8" class="no-results">No fines found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ADD FINE MODAL -->
+<div class="modal-overlay" id="fine-modal" style="display:none" onclick="closeFineModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>Add Fine</h3>
+        <p class="text-muted" id="fine-reader-label"></p>
+
+        <div class="form-group">
+            <label>Fine Type</label>
+            <select class="form-input" id="fine-type">
+                <option value="Overdue">Overdue</option>
+                <option value="Damaged">Damaged</option>
+                <option value="Lost">Lost</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Amount ($)</label>
+            <input type="number" class="form-input" id="fine-amount" min="0" step="0.01" value="1" />
+        </div>
+        <div class="form-group">
+            <label>Notes</label>
+            <input type="text" class="form-input" id="fine-notes" placeholder="Reason for fine..." />
+        </div>
+
+        <input type="hidden" id="fine-borrowing-id" />
+        <input type="hidden" id="fine-reader-id" />
+
+        <div class="modal-actions">
+            <button class="btn-approve" onclick="submitFine()">Add Fine</button>
+            <button class="btn-reject" onclick="closeFineModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- MARK PAID MODAL -->
+<div class="modal-overlay" id="paid-modal" style="display:none" onclick="closePaidModal()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>Mark Fine as Paid</h3>
+        <p class="text-muted" id="paid-reader-label"></p>
+
+        <div class="form-group">
+            <label>Payment Method</label>
+            <select class="form-input" id="paid-method">
+                <option value="Cash">Cash</option>
+                <option value="VNPay">VNPay</option>
+                <option value="MoMo">MoMo</option>
+                <option value="PayPal">PayPal</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Payment Date</label>
+            <input type="date" class="form-input" id="paid-date" />
+        </div>
+        <div class="form-group">
+            <label>Transaction ID (optional)</label>
+            <input type="text" class="form-input" id="paid-transaction"
+                   placeholder="e.g. TXN123456" />
+        </div>
+        <div class="form-group">
+            <label>Receipt / Transaction Image URL (optional)</label>
+            <input type="text" class="form-input" id="paid-img-url"
+                   placeholder="https://... or leave blank" />
+            <div id="paid-img-preview" style="margin-top:8px"></div>
+        </div>
+
+        <input type="hidden" id="paid-fine-id" />
+
+        <div class="modal-actions">
+            <button class="btn-approve" onclick="submitMarkPaid()">Confirm Payment</button>
+            <button class="btn-reject" onclick="closePaidModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Set today as default payment date
+        document.getElementById('paid-date').value = new Date().toISOString().split('T')[0];
+
+        function toggleActivity(id) {
+            var d = document.getElementById('detail-' + id);
+            var c = document.getElementById('chev-' + id);
+            if (!d) return;
+            var open = d.style.display === 'block';
+            d.style.display = open ? 'none' : 'block';
+            c.textContent = open ? '▶' : '▼';
+        }
+
+        // ADD FINE MODAL
+        function openAddFine(borrowingId, readerId, readerName, daysOverdue, hasDamaged) {
+            document.getElementById('fine-borrowing-id').value = borrowingId;
+            document.getElementById('fine-reader-id').value = readerId;
+            document.getElementById('fine-reader-label').textContent = 'Reader: ' + readerName;
+            if (hasDamaged) {
+                document.getElementById('fine-type').value = 'Damaged';
+                document.getElementById('fine-amount').value = 20;
+                document.getElementById('fine-notes').value = 'Damaged or lost copy';
+            } else {
+                document.getElementById('fine-type').value = 'Overdue';
+                document.getElementById('fine-amount').value = daysOverdue;
+                document.getElementById('fine-notes').value = daysOverdue + ' days overdue';
+            }
+            document.getElementById('fine-modal').style.display = 'flex';
+        }
+
+        function closeFineModal() {
+            document.getElementById('fine-modal').style.display = 'none';
+        }
+
+        function submitFine() {
+            var borrowingId = document.getElementById('fine-borrowing-id').value;
+            var readerId = document.getElementById('fine-reader-id').value;
+            var fineType = document.getElementById('fine-type').value;
+            var amount = document.getElementById('fine-amount').value;
+            var notes = document.getElementById('fine-notes').value;
+
+            fetch('/Librarian/AddFine', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'borrowingId=' + borrowingId + '&readerId=' + readerId +
+                    '&fineType=' + encodeURIComponent(fineType) +
+                    '&amount=' + amount + '&notes=' + encodeURIComponent(notes)
+            }).then(r => r.json()).then(data => {
+                alert(data.message);
+                if (data.success) { closeFineModal(); location.reload(); }
+            });
+        }
+
+        // MARK PAID MODAL
+        function openMarkPaid(fineId, readerName, amount) {
+            document.getElementById('paid-fine-id').value = fineId;
+            document.getElementById('paid-reader-label').textContent =
+                'Reader: ' + readerName + ' · Amount: $' + parseFloat(amount).toFixed(2);
+            document.getElementById('paid-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('paid-img-preview').innerHTML = '';
+            document.getElementById('paid-modal').style.display = 'flex';
+        }
+
+        function closePaidModal() {
+            document.getElementById('paid-modal').style.display = 'none';
+        }
+
+        document.getElementById('paid-img-url').addEventListener('input', function () {
+            var url = this.value;
+            var preview = document.getElementById('paid-img-preview');
+            if (url) {
+                preview.innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:140px;border-radius:8px;border:1px solid var(--border)" onerror="this.style.display=\'none\'" />';
+            } else {
+                preview.innerHTML = '';
+            }
+        });
+
+        function submitMarkPaid() {
+            var fineId = document.getElementById('paid-fine-id').value;
+            var method = document.getElementById('paid-method').value;
+            var date = document.getElementById('paid-date').value;
+            var transaction = document.getElementById('paid-transaction').value;
+
+            fetch('/Librarian/MarkPaid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'fineId=' + fineId +
+                    '&paymentMethod=' + encodeURIComponent(method) +
+                    '&transactionId=' + encodeURIComponent(transaction) +
+                    '&paymentDate=' + encodeURIComponent(date)
+            }).then(r => r.json()).then(data => {
+                alert(data.message);
+                if (data.success) { closePaidModal(); location.reload(); }
+            });
+        }
+    </script>
+}

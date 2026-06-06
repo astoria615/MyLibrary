@@ -1,0 +1,101 @@
+﻿@using MyLibrary
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title – MY LIBRARY</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/Content/library.css?v=5" />
+</head>
+<body>
+    <div class="app-shell">
+        <nav class="sidebar">
+            <div class="sidebar-brand">MY LIBRARY</div>
+            <ul class="sidebar-nav">
+                <li>@Html.ActionLink("Home", "Index", "Guest")</li>
+                <li class="has-submenu">
+                    <a href="#" id="cat-toggle" onclick="toggleCategoryMenu(event)">Category</a>
+                    <div class="cat-dropdown" id="cat-dropdown" style="display:none">
+                        @try
+                        {
+                            Html.RenderAction("CategoryMenu", "Guest");
+                        }
+                        catch (Exception)
+                        {
+                            <span style="display: block; padding: 10px 15px; font-size: 13px; color: var(--text-muted);">
+                                Loading categories...
+                            </span>
+                        }
+                    </div>
+                </li>
+                @if (Request.IsAuthenticated)
+                {
+                    <li>@Html.ActionLink("My Borrows", "MyBorrows", "Reader")</li>
+                }
+            </ul>
+            <div class="sidebar-divider"></div>
+            <ul class="sidebar-nav sidebar-nav-bottom">
+                <li>@Html.ActionLink("Setting", "Setting", "Guest")</li>
+                <li>@Html.ActionLink("Support", "Support", "Guest")</li>
+                @if (Request.IsAuthenticated)
+                {
+                    <li>@Html.ActionLink("Logout", "Logout", "Account")</li>
+                }
+                else
+                {
+                    <li>@Html.ActionLink("Log in / Register", "Login", "Account")</li>
+                }
+            </ul>
+        </nav>
+
+        <div class="main-area">
+            <div class="topbar">
+                @using (Html.BeginForm("Search", "Guest", FormMethod.Get, new { @class = "search-form" }))
+                {
+                    <input type="text" name="q" placeholder="Search by title, ISBN, author, category…"
+                           value="@ViewBag.SearchQuery" class="search-input" autocomplete="off" />
+                    <button type="submit" class="search-btn">&#9906;</button>
+                }
+
+                <div class="topbar-right">
+                    @if (Request.IsAuthenticated)
+                    {
+                        string avatarUrl = Session["AvatarUrl"] != null ? Session["AvatarUrl"].ToString() : "";
+                        string fullName = Session["FullName"] != null ? Session["FullName"].ToString() : "User";
+                        string avatarSrc = string.IsNullOrEmpty(avatarUrl)
+                            ? "/Content/images/default-avatar.png"
+                            : avatarUrl;
+
+                        <div class="notif-wrap" id="notif-wrap">
+                            <button class="notif-btn" onclick="toggleNotifications()" id="notif-btn">
+                                🔔 <span class="notif-badge" id="notif-badge" style="display:none">!</span>
+                            </button>
+                            <div class="notif-dropdown" id="notif-dropdown" style="display:none"></div>
+                        </div>
+
+                        <a href="@Url.Action("Profile","Account")" class="user-chip">
+                            <img src="@avatarSrc" class="user-avatar" alt="avatar"
+                                 onerror="this.src='/Content/images/default-avatar.png'" />
+                            <span class="user-name">@fullName</span>
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="@Url.Action("Login","Account")" class="btn-outline-sm">Log in</a>
+                        <a href="@Url.Action("Register","Account")" class="btn-primary-sm">Register</a>
+                    }
+                </div>
+            </div>
+
+            <div class="content-wrap">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="~/Scripts/jquery-3.6.0.min.js"></script>
+    <script src="~/Scripts/library.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,16 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.NotificationItem>
+
+@if (!Model.Any())
+{
+    <div class="notif-empty">No new notifications</div>
+}
+else
+{
+    foreach (var n in Model)
+    {
+        <div class="notif-item notif-@n.Type">
+            <span class="notif-icon">@n.Icon</span>
+            <span class="notif-msg">@n.Message</span>
+        </div>
+    }
+}

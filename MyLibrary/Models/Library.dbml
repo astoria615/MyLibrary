@@ -1,0 +1,236 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="LibraryDb" Class="LibraryDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Table Name="dbo.Author" Member="Authors">
+    <Type Name="Author">
+      <Column Name="AuthorId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="FullName" Type="System.String" DbType="NVarChar(200) NOT NULL" CanBeNull="false" />
+      <Column Name="Bio" Type="System.String" DbType="NVarChar(1000)" CanBeNull="true" />
+      <Column Name="DateOfBirth" Type="System.DateTime" DbType="Date" CanBeNull="true" />
+      <Column Name="Nationality" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
+      <Column Name="Email" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Author_Book" Member="Books" ThisKey="AuthorId" OtherKey="AuthorId" Type="Book" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Book" Member="Books">
+    <Type Name="Book">
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ISBN" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
+      <Column Name="Title" Type="System.String" DbType="NVarChar(300) NOT NULL" CanBeNull="false" />
+      <Column Name="AuthorId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="CategoryId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="PublisherId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="PublishYear" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="TotalCopies" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="AvailableCopies" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Language" Type="System.String" DbType="NVarChar(50)" CanBeNull="true" />
+      <Column Name="PageCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Description" Type="System.String" DbType="NVarChar(2000)" CanBeNull="true" />
+      <Column Name="ShelfLocation" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
+      <Column Name="EbookUrl" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="IsFeatured" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="AverageRating" Type="System.Decimal" DbType="Decimal(3,2)" CanBeNull="true" />
+      <Column Name="TotalReviews" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="UpdatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Book_BookImage" Member="BookImages" ThisKey="BookId" OtherKey="BookId" Type="BookImage" />
+      <Association Name="Book_BookStatus" Member="BookStatus" ThisKey="BookId" OtherKey="BookId" Type="BookStatus" />
+      <Association Name="Book_BorrowingDetail" Member="BorrowingDetails" ThisKey="BookId" OtherKey="BookId" Type="BorrowingDetail" />
+      <Association Name="Book_Reservation" Member="Reservations" ThisKey="BookId" OtherKey="BookId" Type="Reservation" />
+      <Association Name="Book_Review" Member="Reviews" ThisKey="BookId" OtherKey="BookId" Type="Review" />
+      <Association Name="Author_Book" Member="Author" ThisKey="AuthorId" OtherKey="AuthorId" Type="Author" IsForeignKey="true" />
+      <Association Name="Category_Book" Member="Category" ThisKey="CategoryId" OtherKey="CategoryId" Type="Category" IsForeignKey="true" />
+      <Association Name="Publisher_Book" Member="Publisher" ThisKey="PublisherId" OtherKey="PublisherId" Type="Publisher" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.BookImage" Member="BookImages">
+    <Type Name="BookImage">
+      <Column Name="ImageId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="ImageUrl" Type="System.String" DbType="NVarChar(500) NOT NULL" CanBeNull="false" />
+      <Column Name="IsPrimary" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Book_BookImage" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.BookStatus" Member="BookStatus">
+    <Type Name="BookStatus">
+      <Column Name="StatusId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="CopyNumber" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Status" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="UpdatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Book_BookStatus" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Borrowing" Member="Borrowings">
+    <Type Name="Borrowing">
+      <Column Name="BorrowingId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ReaderId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LibrarianId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="BorrowDate" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="DueDate" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="ReturnDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Status" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="UpdatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Borrowing_BorrowingDetail" Member="BorrowingDetails" ThisKey="BorrowingId" OtherKey="BorrowingId" Type="BorrowingDetail" />
+      <Association Name="Borrowing_Fine" Member="Fines" ThisKey="BorrowingId" OtherKey="BorrowingId" Type="Fine" />
+      <Association Name="Librarian_Borrowing" Member="Librarian" ThisKey="LibrarianId" OtherKey="LibrarianId" Type="Librarian" IsForeignKey="true" />
+      <Association Name="Reader_Borrowing" Member="Reader" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reader" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.BorrowingDetail" Member="BorrowingDetails">
+    <Type Name="BorrowingDetail">
+      <Column Name="DetailId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="BorrowingId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="ReturnedAt" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Condition" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
+      <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Association Name="Book_BorrowingDetail" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
+      <Association Name="Borrowing_BorrowingDetail" Member="Borrowing" ThisKey="BorrowingId" OtherKey="BorrowingId" Type="Borrowing" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Category" Member="Categories">
+    <Type Name="Category">
+      <Column Name="CategoryId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="CategoryName" Type="System.String" DbType="NVarChar(100) NOT NULL" CanBeNull="false" />
+      <Column Name="Description" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Category_Book" Member="Books" ThisKey="CategoryId" OtherKey="CategoryId" Type="Book" />
+    </Type>
+  </Table>
+  <Table Name="dbo.EmailNotification" Member="EmailNotifications">
+    <Type Name="EmailNotification">
+      <Column Name="NotificationId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="UserId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="NotificationType" Type="System.String" DbType="NVarChar(50) NOT NULL" CanBeNull="false" />
+      <Column Name="Subject" Type="System.String" DbType="NVarChar(300) NOT NULL" CanBeNull="false" />
+      <Column Name="Body" Type="System.String" DbType="NVarChar(MAX) NOT NULL" CanBeNull="false" />
+      <Column Name="SentAt" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Status" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="UserAccount_EmailNotification" Member="UserAccount" ThisKey="UserId" OtherKey="UserId" Type="UserAccount" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Fine" Member="Fines">
+    <Type Name="Fine">
+      <Column Name="FineId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="BorrowingId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="ReaderId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="FineType" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="Amount" Type="System.Decimal" DbType="Decimal(18,2) NOT NULL" CanBeNull="false" />
+      <Column Name="PaidAmount" Type="System.Decimal" DbType="Decimal(18,2) NOT NULL" CanBeNull="false" />
+      <Column Name="PaymentStatus" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="PaymentMethod" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
+      <Column Name="TransactionId" Type="System.String" DbType="NVarChar(200)" CanBeNull="true" />
+      <Column Name="PaymentDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="IssuedDate" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="ConfirmedBy" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Association Name="Borrowing_Fine" Member="Borrowing" ThisKey="BorrowingId" OtherKey="BorrowingId" Type="Borrowing" IsForeignKey="true" />
+      <Association Name="Librarian_Fine" Member="Librarian" ThisKey="ConfirmedBy" OtherKey="LibrarianId" Type="Librarian" IsForeignKey="true" />
+      <Association Name="Reader_Fine" Member="Reader" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reader" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Librarian" Member="Librarians">
+    <Type Name="Librarian">
+      <Column Name="LibrarianId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="UserId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LibrarianCode" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="Department" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
+      <Column Name="HireDate" Type="System.DateTime" DbType="Date NOT NULL" CanBeNull="false" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Association Name="Librarian_Borrowing" Member="Borrowings" ThisKey="LibrarianId" OtherKey="LibrarianId" Type="Borrowing" />
+      <Association Name="Librarian_Fine" Member="Fines" ThisKey="LibrarianId" OtherKey="ConfirmedBy" Type="Fine" />
+      <Association Name="UserAccount_Librarian" Member="UserAccount" ThisKey="UserId" OtherKey="UserId" Type="UserAccount" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Publisher" Member="Publishers">
+    <Type Name="Publisher">
+      <Column Name="PublisherId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="PublisherName" Type="System.String" DbType="NVarChar(200) NOT NULL" CanBeNull="false" />
+      <Column Name="Address" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="Email" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
+      <Column Name="Phone" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
+      <Column Name="Website" Type="System.String" DbType="NVarChar(200)" CanBeNull="true" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="Publisher_Book" Member="Books" ThisKey="PublisherId" OtherKey="PublisherId" Type="Book" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Reader" Member="Readers">
+    <Type Name="Reader">
+      <Column Name="ReaderId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="UserId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="ReaderCode" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="DateOfBirth" Type="System.DateTime" DbType="Date" CanBeNull="true" />
+      <Column Name="Gender" Type="System.String" DbType="NVarChar(10)" CanBeNull="true" />
+      <Column Name="MembershipDate" Type="System.DateTime" DbType="Date NOT NULL" CanBeNull="false" />
+      <Column Name="MembershipExpiry" Type="System.DateTime" DbType="Date" CanBeNull="true" />
+      <Column Name="TotalBorrowed" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="TotalFines" Type="System.Decimal" DbType="Decimal(18,2) NOT NULL" CanBeNull="false" />
+      <Association Name="Reader_Borrowing" Member="Borrowings" ThisKey="ReaderId" OtherKey="ReaderId" Type="Borrowing" />
+      <Association Name="Reader_Fine" Member="Fines" ThisKey="ReaderId" OtherKey="ReaderId" Type="Fine" />
+      <Association Name="Reader_Reservation" Member="Reservations" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reservation" />
+      <Association Name="Reader_Review" Member="Reviews" ThisKey="ReaderId" OtherKey="ReaderId" Type="Review" />
+      <Association Name="UserAccount_Reader" Member="UserAccount" ThisKey="UserId" OtherKey="UserId" Type="UserAccount" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Reservation" Member="Reservations">
+    <Type Name="Reservation">
+      <Column Name="ReservationId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ReaderId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="ReservationDate" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="ExpiryDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="Status" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Association Name="Book_Reservation" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
+      <Association Name="Reader_Reservation" Member="Reader" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reader" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Review" Member="Reviews">
+    <Type Name="Review">
+      <Column Name="ReviewId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="ReaderId" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Rating" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Comment" Type="System.String" DbType="NVarChar(1000)" CanBeNull="true" />
+      <Column Name="ReviewDate" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="IsVisible" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Association Name="Book_Review" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
+      <Association Name="Reader_Review" Member="Reader" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reader" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="dbo.UserAccount" Member="UserAccounts">
+    <Type Name="UserAccount">
+      <Column Name="UserId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="Email" Type="System.String" DbType="NVarChar(150) NOT NULL" CanBeNull="false" />
+      <Column Name="PasswordHash" Type="System.String" DbType="NVarChar(256) NOT NULL" CanBeNull="false" />
+      <Column Name="FullName" Type="System.String" DbType="NVarChar(200) NOT NULL" CanBeNull="false" />
+      <Column Name="Phone" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
+      <Column Name="Address" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="AvatarUrl" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="Role" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="IsEmailVerified" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="EmailVerificationToken" Type="System.String" DbType="NVarChar(256)" CanBeNull="true" />
+      <Column Name="PasswordResetToken" Type="System.String" DbType="NVarChar(256)" CanBeNull="true" />
+      <Column Name="PasswordResetExpiry" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="FailedLoginAttempts" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="LockoutUntil" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
+      <Column Name="RememberMeToken" Type="System.String" DbType="NVarChar(256)" CanBeNull="true" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="UpdatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Association Name="UserAccount_EmailNotification" Member="EmailNotifications" ThisKey="UserId" OtherKey="UserId" Type="EmailNotification" />
+      <Association Name="UserAccount_Librarian" Member="Librarians" ThisKey="UserId" OtherKey="UserId" Type="Librarian" />
+      <Association Name="UserAccount_Reader" Member="Readers" ThisKey="UserId" OtherKey="UserId" Type="Reader" />
+    </Type>
+  </Table>
+</Database>

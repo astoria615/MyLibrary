@@ -1,0 +1,59 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.BorrowHistoryItem>
+@{
+    ViewBag.Title = "My Borrows";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="borrows-page">
+    <h2>My Borrow History</h2>
+
+    @if (!Model.Any())
+    {
+        <div class="empty-state">
+            <p>📚 You haven't borrowed any books yet.</p>
+            <a href="@Url.Action("BookList","Guest")" class="btn-primary">Browse Books</a>
+        </div>
+    }
+    else
+    {
+        foreach (var borrow in Model)
+        {
+            <div class="borrow-card">
+                <div class="borrow-header">
+                    <div>
+                        <span class="borrow-id">#@borrow.BorrowingId</span>
+                        <span class="borrow-status status-@borrow.Status.ToLower()">@borrow.Status</span>
+                    </div>
+                    <div class="borrow-dates">
+                        <span>Borrowed: @borrow.BorrowDate.ToString("MMM dd, yyyy")</span>
+                        <span>Due: @borrow.DueDate.ToString("MMM dd, yyyy")</span>
+                        @if (borrow.ReturnDate.HasValue)
+                        {
+                            <span>Returned: @borrow.ReturnDate.Value.ToString("MMM dd, yyyy")</span>
+                        }
+                    </div>
+                </div>
+                <div class="borrow-books">
+                    @foreach (var book in borrow.Books)
+                    {
+                        <div class="borrow-book-item">
+                            <div class="borrow-cover">
+                                @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                                else
+                                { <div class="cover-placeholder">📖</div>}
+                            </div>
+                            <div>
+                                <a href="#" onclick="selectBook(@book.BookId, 'list'); return false;" class="borrow-book-title">@book.Title</a>
+                                @if (!string.IsNullOrEmpty(book.Condition))
+                                {
+                                    <span class="borrow-condition">Condition: @book.Condition</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>

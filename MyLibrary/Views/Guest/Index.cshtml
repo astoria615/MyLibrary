@@ -1,0 +1,75 @@
+﻿@model MyLibrary.Models.ViewModels.HomeViewModel
+@{
+    ViewBag.Title = "Home";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="home-layout">
+    <div class="home-main">
+        <!-- NEW BOOKS -->
+        <section class="book-section">
+            <div class="section-header">
+                <h2>New Books</h2>
+                <a href="@Url.Action("BookList","Guest",new{sort="newest"})" class="view-all">View all &gt;</a>
+            </div>
+            <div class="book-grid">
+                @foreach (var book in Model.NewBooks.Take(4))
+                {
+                    <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
+                         onclick="selectBook(@book.BookId, 'home')">
+                        <div class="book-cover">
+                            @if (!string.IsNullOrEmpty(book.CoverUrl))
+                            {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                            else
+                            { <div class="cover-placeholder">📖</div>}
+                        </div>
+                        <div class="book-meta">
+                            <span class="book-title">@book.Title</span>
+                            <span class="book-author">@book.AuthorName</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <!-- CATEGORY SECTION -->
+        <section class="book-section">
+            <div class="section-header">
+                <h2>Category</h2>
+            </div>
+            <div class="cat-filter-tabs">
+                <a href="@Url.Action("Index","Guest",new{categoryId=0})"
+                   class="cat-tab @(Model.SelectedCategoryId == 0 ? "active" : "")">All</a>
+                @foreach (var cat in Model.Categories.Take(5))
+                {
+                    <a href="@Url.Action("Index","Guest",new{categoryId=cat.CategoryId})"
+                       class="cat-tab @(Model.SelectedCategoryId == cat.CategoryId ? "active" : "")">
+                        @cat.CategoryName
+                    </a>
+                }
+            </div>
+            <div class="book-grid">
+                @foreach (var book in Model.CategoryBooks.Take(4))
+                {
+                    <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
+                         onclick="selectBook(@book.BookId, 'home')">
+                        <div class="book-cover">
+                            @if (!string.IsNullOrEmpty(book.CoverUrl))
+                            {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                            else
+                            { <div class="cover-placeholder">📖</div>}
+                        </div>
+                        <div class="book-meta">
+                            <span class="book-title">@book.Title</span>
+                            <span class="book-author">@book.AuthorName</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    </div>
+
+    <!-- BOOK DETAIL PANEL -->
+    <aside class="book-detail-panel" id="detail-panel" style="display:none">
+    </aside>
+</div>

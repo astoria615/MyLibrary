@@ -1,0 +1,106 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.BorrowActivityItem>
+@{
+    ViewBag.Title = "Borrow Requests";
+    Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+    string cur = ViewBag.CurrentStatus;
+}
+
+<div class="lib-dashboard">
+    <div class="lib-section">
+        <h2>Borrow Requests</h2>
+
+        <div class="status-tabs">
+            @foreach (var s in new[] { "Pending", "Approved", "Returned", "Rejected", "Overdue" })
+            {
+                <a href="@Url.Action("BorrowRequests","Librarian",new{status=s})"
+                   class="status-tab @(cur == s ? "active" : "")">@s</a>
+            }
+        </div>
+
+        <div class="activity-list">
+            @foreach (var item in Model)
+            {
+                <div class="activity-row" onclick="toggleActivity(@item.BorrowingId)">
+                    <div class="activity-title-row">
+                        <div class="activity-left">
+                            <span class="activity-icon">📋</span>
+                            <div>
+                                <span class="activity-title">
+                                    <strong>@item.ReaderName</strong>
+                                    <span class="borrow-status status-@item.Status.ToLower()">@item.Status</span>
+                                </span>
+                                <span class="activity-sub">
+                                    @item.Books.Count book(s) · Due: @item.DueDate.ToString("MMM dd, yyyy")
+                                    @if (item.ReturnDate.HasValue)
+                                    {<text>· Returned: @item.ReturnDate.Value.ToString("MMM dd, yyyy")</text>}
+                                </span>
+                            </div>
+                        </div>
+                        <span class="activity-chevron" id="chev-@item.BorrowingId">▶</span>
+                    </div>
+                    <div class="activity-detail" id="detail-@item.BorrowingId"
+                         style="display:none" onclick="event.stopPropagation()">
+                        <div class="activity-books">
+                            @foreach (var book in item.Books)
+                            {
+                                <div class="activity-book-item">
+                                    <div class="borrow-cover">
+                                        @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                        {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                                        else
+                                        { <div class="cover-placeholder">📖</div>}
+                                    </div>
+                                    <span class="activity-book-title">@book.Title</span>
+                                </div>
+                            }
+                        </div>
+                        @if (item.Status == "Pending")
+                        {
+                            <div class="activity-actions">
+                                <button class="btn-approve" onclick="approveBorrow(@item.BorrowingId)">✓ Approve</button>
+                                <button class="btn-reject" onclick="rejectBorrow(@item.BorrowingId)">✕ Reject</button>
+                            </div>
+                        }
+                        else if (item.Status == "Approved")
+                        {
+                            <div class="activity-actions">
+                                <button class="btn-return" onclick="markReturned(@item.BorrowingId)">↩ Mark Returned</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            @if (!Model.Any())
+            {
+                <p class="no-results">No @cur requests found.</p>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleActivity(id) {
+            var d = document.getElementById('detail-' + id);
+            var c = document.getElementById('chev-' + id);
+            var open = d.style.display === 'block';
+            d.style.display = open ? 'none' : 'block';
+            c.textContent = open ? '▶' : '▼';
+        }
+        function approveBorrow(id) {
+            if (!confirm('Approve?')) return;
+            fetch('/Librarian/ApproveBorrow', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'borrowingId=' + id })
+                .then(r => r.json()).then(d => { alert(d.message); location.reload(); });
+        }
+        function rejectBorrow(id) {
+            if (!confirm('Reject?')) return;
+            fetch('/Librarian/RejectBorrow', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'borrowingId=' + id })
+                .then(r => r.json()).then(d => { alert(d.message); location.reload(); });
+        }
+        function markReturned(id) {
+            if (!confirm('Mark returned?')) return;
+            fetch('/Librarian/MarkReturned', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'borrowingId=' + id })
+                .then(r => r.json()).then(d => { alert(d.message); location.reload(); });
+        }
+    </script>
+}

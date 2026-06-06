@@ -1,0 +1,128 @@
+﻿@model MyLibrary.Models.ViewModels.ProfileViewModel
+@{
+    ViewBag.Title = "My Profile";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="profile-page">
+    <div class="profile-header">
+        <div class="profile-avatar-wrap">
+            <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "/Content/images/default-avatar.png" : Model.AvatarUrl)"
+                 class="profile-avatar-large" id="avatar-preview" alt="Avatar" />
+        </div>
+        <div>
+            <h2>@Model.FullName</h2>
+            <p class="text-muted">@Model.Email</p>
+            <p class="text-muted">Reader Code: <strong>@Model.ReaderCode</strong></p>
+        </div>
+        <div class="profile-stats">
+            <div class="stat-box">
+                <span class="stat-num">@Model.TotalBorrowed</span>
+                <span class="stat-label">Borrowed</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-num">$@Model.TotalFines.ToString("F2")</span>
+                <span class="stat-label">Total Fines</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-num">@(Model.MembershipExpiry?.ToString("MMM yyyy") ?? "—")</span>
+                <span class="stat-label">Member Until</span>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert-success">@TempData["Success"]</div>
+    }
+
+    @using (Html.BeginForm("Profile", "Account", FormMethod.Post, new { @class = "profile-form", enctype = "multipart/form-data" }))
+    {
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(true, "", new { @class = "alert-error" })
+
+        <div class="settings-card">
+            <h3>Personal Information</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    @Html.TextBoxFor(m => m.FullName, new { @class = "form-input" })
+                    @Html.ValidationMessageFor(m => m.FullName, "", new { @class = "field-error" })
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    @Html.TextBoxFor(m => m.Phone, new { @class = "form-input" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Address</label>
+                @Html.TextBoxFor(m => m.Address, new { @class = "form-input" })
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Gender</label>
+                    @Html.DropDownListFor(m => m.Gender,
+                        new SelectList(new[] { "", "Male", "Female", "Other" }),
+                        new { @class = "form-input" })
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth</label>
+                    @Html.TextBoxFor(m => m.DateOfBirth, "{0:yyyy-MM-dd}", new { @class = "form-input", type = "date" })
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <h3>Avatar</h3>
+            <div class="avatar-upload-row">
+                <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "/Content/images/default-avatar.png" : Model.AvatarUrl)"
+                     class="avatar-upload-preview" id="avatar-preview2" alt="Avatar preview"
+                     style="width:80px;height:80px;border-radius:50%;object-fit:cover;" />
+                <div>
+                    <input type="file" id="avatar-file-input" accept="image/*"
+                           style="display:none" onchange="previewAvatarFile(this)" />
+                    <button type="button" class="btn-choose-avatar"
+                            onclick="document.getElementById('avatar-file-input').click()">
+                        Choose Image
+                    </button>
+                    <p class="text-muted" style="margin-top:6px;font-size:12px">
+                        JPG, PNG. Image will be saved as URL after upload.
+                    </p>
+                </div>
+            </div>
+            @Html.HiddenFor(m => m.AvatarUrl, new { id = "avatar-url-hidden" })
+        </div>
+
+        <button type="submit" class="btn-primary">Update Profile</button>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        function previewAvatarFile(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    // Resize to max 200x200 before saving
+                    var img = new Image();
+                    img.onload = function () {
+                        var canvas = document.createElement('canvas');
+                        var max = 200;
+                        var w = img.width, h = img.height;
+                        if (w > h) { if (w > max) { h = h * max / w; w = max; } }
+                        else { if (h > max) { w = w * max / h; h = max; } }
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        var resized = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById('avatar-preview').src = resized;
+                        document.getElementById('avatar-preview2').src = resized;
+                        document.getElementById('avatar-url-hidden').value = resized;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+}

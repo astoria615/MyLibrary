@@ -1,0 +1,8 @@
+﻿@model IEnumerable<MyLibrary.Models.ViewModels.CategoryItem>
+
+@foreach (var cat in Model)
+{
+    <a href="@Url.Action("BookList","Guest",new{categoryId=cat.CategoryId})" class="cat-menu-item">
+        @cat.CategoryName
+    </a>
+}

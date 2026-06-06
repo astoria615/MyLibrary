@@ -1,0 +1,52 @@
+﻿@{
+    ViewBag.Title = "Support";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="support-page">
+    <h2>Support &amp; FAQ</h2>
+    <p class="support-subtitle">Frequently asked questions about My Library</p>
+
+    <div class="faq-list">
+        @{
+            var faqs = new[] {
+                new { Q = "How do I borrow a book?", A = "Browse or search for a book, click it to view details, then click 'Borrow now'. You will need to be logged in as a registered Reader to complete the request." },
+                new { Q = "How many books can I borrow at once?", A = "Registered readers can borrow up to 3 books simultaneously. Membership tier may affect this limit." },
+                new { Q = "How long is the borrowing period?", A = "The standard borrowing period is 14 days. You can check your due dates in your account dashboard." },
+                new { Q = "What happens if I return a book late?", A = "A fine of $1 per day is applied for overdue books. Fines can be paid in person or via VNPay, MoMo, or PayPal." },
+                new { Q = "Can I reserve a book that is not currently available?", A = "Yes! Click 'Borrow now' on an unavailable book to place a reservation. You will be notified when the book is ready." },
+                new { Q = "How do I search for a specific book?", A = "Use the search bar at the top to search by title, ISBN, author name, or category. Results update immediately." },
+                new { Q = "How do I register as a Reader?", A = "Click 'Log in / Register' in the sidebar, then choose 'Create Account'. Fill in your details to get started." },
+                new { Q = "How do I report a damaged or lost book?", A = "Contact a librarian at the circulation desk or email the library. Replacement fees may apply for lost books." },
+            };
+        }
+        @foreach (var faq in faqs)
+        {
+            <div class="faq-item">
+                <button class="faq-q" onclick="toggleFaq(this)">
+                    @faq.Q <span class="faq-icon">&#43;</span>
+                </button>
+                <div class="faq-a" style="display:none">
+                    <p>@faq.A</p>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="support-contact">
+        <h3>Still need help?</h3>
+        <p>Email us at <a href="mailto:support@mylibrary.com">support@mylibrary.com</a> or visit the circulation desk.</p>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+function toggleFaq(btn) {
+    var ans = btn.nextElementSibling;
+    var icon = btn.querySelector('.faq-icon');
+    var open = ans.style.display === 'block';
+    ans.style.display = open ? 'none' : 'block';
+    icon.innerHTML = open ? '&#43;' : '&#8722;';
+}
+    </script>
+}

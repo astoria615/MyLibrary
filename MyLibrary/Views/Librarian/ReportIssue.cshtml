@@ -1,0 +1,156 @@
+﻿@{
+    ViewBag.Title = "Report Copy Issue";
+    Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+}
+
+<div class="lib-dashboard">
+    <div class="lib-section" style="max-width:620px">
+        <h2>Report Copy Issue</h2>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert-success">@TempData["Success"]</div>
+        }
+
+        @using (Html.BeginForm("ReportIssue", "Librarian", FormMethod.Post))
+        {
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label>Book</label>
+                <input type="text" id="book-search" class="form-input"
+                       placeholder="Type book title..." autocomplete="off" />
+                <div class="autocomplete-list" id="book-suggestions"></div>
+                <input type="hidden" name="bookId" id="book-id-hidden" />
+            </div>
+
+            <div class="form-group">
+                <label>Copy Number</label>
+                <select class="form-input" name="copyNumber" id="copy-select">
+                    <option value="">-- Select book first --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Issue Type</label>
+                <select class="form-input" name="issueType">
+                    <option value="Damaged">Damaged</option>
+                    <option value="Lost">Lost</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Notes</label>
+                <input type="text" name="notes" class="form-input"
+                       placeholder="Describe the issue..." />
+            </div>
+
+            <div class="form-group">
+                <label>Responsible Reader (optional)</label>
+                <input type="text" id="reader-search" class="form-input"
+                       placeholder="Type reader name..." autocomplete="off" />
+                <div class="autocomplete-list" id="reader-suggestions"></div>
+                <input type="hidden" name="readerId" id="reader-id-hidden" value="0" />
+            </div>
+
+            <button type="submit" class="btn-primary" style="margin-top:8px"
+                    onclick="return validateForm()">
+                Report Issue
+            </button>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var allBooks = [];
+        var allReaders = [];
+
+        // Load all books and readers on page load
+        fetch('/Librarian/GetAllBooks')
+            .then(r => r.json())
+            .then(data => { allBooks = data; });
+
+        fetch('/Librarian/GetAllReaders')
+            .then(r => r.json())
+            .then(data => { allReaders = data; });
+
+        // Book search
+        document.getElementById('book-search').addEventListener('input', function () {
+            var val = this.value.toLowerCase();
+            var list = document.getElementById('book-suggestions');
+            if (!val) { list.innerHTML = ''; list.style.display = 'none'; return; }
+
+            var matches = allBooks.filter(b => b.title.toLowerCase().indexOf(val) !== -1).slice(0, 8);
+            if (!matches.length) { list.innerHTML = ''; list.style.display = 'none'; return; }
+
+            list.innerHTML = matches.map(b =>
+                '<div class="autocomplete-item" onclick="selectBook(' + b.bookId + ', \'' + b.title.replace(/'/g, "\\'") + '\')">' + b.title + '</div>'
+            ).join('');
+            list.style.display = 'block';
+        });
+
+        function selectBook(bookId, title) {
+            document.getElementById('book-search').value = title;
+            document.getElementById('book-id-hidden').value = bookId;
+            document.getElementById('book-suggestions').style.display = 'none';
+            loadCopies(bookId);
+        }
+
+        function loadCopies(bookId) {
+            fetch('/Librarian/GetCopies?bookId=' + bookId)
+                .then(r => r.json())
+                .then(data => {
+                    var sel = document.getElementById('copy-select');
+                    sel.innerHTML = '';
+                    data.forEach(function (c) {
+                        var opt = document.createElement('option');
+                        opt.value = c.copyNumber;
+                        opt.textContent = 'Copy #' + c.copyNumber + ' (' + c.status + ')';
+                        sel.appendChild(opt);
+                    });
+                });
+        }
+
+        // Reader search
+        document.getElementById('reader-search').addEventListener('input', function () {
+            var val = this.value.toLowerCase();
+            var list = document.getElementById('reader-suggestions');
+            if (!val) { list.innerHTML = ''; list.style.display = 'none'; return; }
+
+            var matches = allReaders.filter(r => r.fullName.toLowerCase().indexOf(val) !== -1).slice(0, 8);
+            if (!matches.length) { list.innerHTML = ''; list.style.display = 'none'; return; }
+
+            list.innerHTML = matches.map(r =>
+                '<div class="autocomplete-item" onclick="selectReader(' + r.readerId + ', \'' + r.fullName.replace(/'/g, "\\'") + '\')">' + r.fullName + '</div>'
+            ).join('');
+            list.style.display = 'block';
+        });
+
+        function selectReader(readerId, name) {
+            document.getElementById('reader-search').value = name;
+            document.getElementById('reader-id-hidden').value = readerId;
+            document.getElementById('reader-suggestions').style.display = 'none';
+        }
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('#book-search') && !e.target.closest('#book-suggestions'))
+                document.getElementById('book-suggestions').style.display = 'none';
+            if (!e.target.closest('#reader-search') && !e.target.closest('#reader-suggestions'))
+                document.getElementById('reader-suggestions').style.display = 'none';
+        });
+
+        function validateForm() {
+            if (!document.getElementById('book-id-hidden').value) {
+                alert('Please select a book from the suggestions.');
+                return false;
+            }
+            if (!document.getElementById('copy-select').value) {
+                alert('Please select a copy number.');
+                return false;
+            }
+            return true;
+        }
+    </script>
+}

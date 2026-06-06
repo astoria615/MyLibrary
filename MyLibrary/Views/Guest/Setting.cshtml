@@ -1,0 +1,56 @@
+﻿@{
+    ViewBag.Title = "Settings";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="settings-page">
+    <h2>Settings</h2>
+
+    <div class="settings-card">
+        <h3>Appearance</h3>
+        <div class="setting-row">
+            <div>
+                <strong>Dark Mode</strong>
+                <p>Switch between light and dark theme</p>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="settings-card">
+        <h3>Reading Preferences</h3>
+        <div class="setting-row">
+            <div>
+                <strong>Default View</strong>
+                <p>Choose how books are displayed in lists</p>
+            </div>
+            <select class="setting-select" id="default-view" onchange="saveViewPref(this.value)">
+                <option value="grid">Grid</option>
+                <option value="list">List</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+    // Load saved dark mode
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark');
+        document.getElementById('dark-mode-toggle').checked = true;
+    }
+    if (localStorage.getItem('defaultView')) {
+        document.getElementById('default-view').value = localStorage.getItem('defaultView');
+    }
+    function toggleDarkMode(on) {
+        document.body.classList.toggle('dark', on);
+        localStorage.setItem('darkMode', on);
+    }
+    function saveViewPref(val) {
+        localStorage.setItem('defaultView', val);
+    }
+    </script>
+}

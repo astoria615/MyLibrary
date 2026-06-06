@@ -1,0 +1,132 @@
+﻿@model MyLibrary.Models.ViewModels.BookListViewModel
+@{
+    ViewBag.Title = Model.CategoryName;
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="home-layout">
+    <div class="home-main">
+        <section class="book-section">
+            <div class="section-header">
+                <h2>@Model.CategoryName</h2>
+                <!-- Sort dropdown -->
+                <div class="sort-wrap">
+                    <button class="sort-btn" onclick="toggleSortMenu()" id="sort-btn">
+                        &#9776; @GetSortLabel(Model.SortBy) <span class="sort-arrow">&#8593;</span>
+                    </button>
+                    <div class="sort-menu" id="sort-menu" style="display:none">
+                        @foreach (var s in new[] { new { val = "title", lbl = "Title" }, new { val = "author", lbl = "Creator" }, new { val = "newest", lbl = "Added" }, new { val = "published", lbl = "Published" }, new { val = "rating", lbl = "Rating" } })
+                        {
+                            <a href="@Url.Action("BookList","Guest", new{ categoryId=Model.CategoryId, q=Model.SearchQuery, sort=s.val, letter=Model.FilterLetter, view=Model.ViewMode })"
+                               class="sort-item @(Model.SortBy == s.val ? "active" : "")">@s.lbl</a>
+                        }
+                    </div>
+                </div>
+                <!-- View toggle -->
+                <div class="view-toggle">
+                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=Model.FilterLetter,view="grid"})"
+                       class="vt-btn @(Model.ViewMode=="grid"?"active":"")">Grid</a>
+                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=Model.FilterLetter,view="list"})"
+                       class="vt-btn @(Model.ViewMode=="list"?"active":"")">List</a>
+                </div>
+            </div>
+
+            <!-- A-Z Filter -->
+            <div class="az-filter">
+                @{
+                    var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+                }
+                <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter="All",view=Model.ViewMode})"
+                   class="az-btn @(Model.FilterLetter=="All"?"active":"")">All</a>
+                @foreach (var lt in letters)
+                {
+                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=lt,view=Model.ViewMode})"
+                       class="az-btn @(Model.FilterLetter==lt.ToString()?"active":"")">@lt</a>
+                }
+            </div>
+
+            <!-- GRID VIEW -->
+            @if (Model.ViewMode == "grid")
+            {
+                <div class="book-grid">
+                    @foreach (var book in Model.Books)
+                    {
+                        <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
+                             onclick="selectBook(@book.BookId, 'list')">
+                            <div class="book-cover">
+                                @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                                else
+                                { <div class="cover-placeholder">📖</div>}
+                            </div>
+                            <div class="book-meta">
+                                <span class="book-title">@book.Title</span>
+                                <span class="book-author">@book.AuthorName</span>
+                            </div>
+                        </div>
+                    }
+                    @if (!Model.Books.Any())
+                    {
+                        <p class="no-results">No books found.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- LIST VIEW -->
+                <table class="book-list-table">
+                    <thead>
+                        <tr><th>Title</th><th>Author</th><th>ISBN</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var book in Model.Books)
+                        {
+                            <tr class="@(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
+                                onclick="selectBook(@book.BookId, 'list')" style="cursor:pointer">
+                                <td>@book.Title</td>
+                                <td>@book.AuthorName</td>
+                                <td>—</td>
+                            </tr>
+                        }
+                        @if (!Model.Books.Any())
+                        {
+                            <tr><td colspan="3" class="no-results">No books found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    </div>
+
+    <!-- BOOK DETAIL PANEL -->
+    <aside class="book-detail-panel" id="detail-panel" style="display:@(Model.SelectedBook != null ? "flex" : "none")">
+        @if (Model.SelectedBook != null)
+        {
+            Html.RenderPartial("_BookDetail", Model.SelectedBook);
+        }
+    </aside>
+</div>
+
+@section Scripts {
+    <script>
+    // pass ISBN to the list view (LINQ to SQL needs a join to bring ISBN into BookCard)
+    // Already handled via detail panel AJAX
+    </script>
+}
+
+@helper GetSortLabel(string sort)
+{
+    switch (sort)
+    {
+        case "author":@:Creator
+            break;
+        case "newest": @:Added
+            break;
+        case "published": @:Published
+            break;
+        case "rating": @:Rating
+            break;
+        default: @:Title
+            break;
+    }
+}

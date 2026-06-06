@@ -1,0 +1,38 @@
+﻿@model MyLibrary.Models.ViewModels.BookDetailViewModel
+
+<div class="detail-cover-img">
+    @if (!string.IsNullOrEmpty(Model.CoverUrl))
+    {<img src="@Model.CoverUrl" alt="@Model.Title" /> }
+    else
+    { <div class="cover-placeholder large">📖</div>}
+</div>
+<div class="detail-info">
+    <h3 class="detail-title">@Model.Title</h3>
+    <p class="detail-author">@Model.AuthorName</p>
+    <div class="detail-stars">
+        @for (int i = 1; i <= 5; i++)
+        {
+            <span class="star @(i <= (int)Math.Round((double)Model.AverageRating) ? "filled" : "")">&#9733;</span>
+        }
+        <span class="detail-reviews">(@Model.TotalReviews reviews)</span>
+    </div>
+    <p class="detail-desc">@Model.Description</p>
+    <div class="detail-meta-grid">
+        <span class="meta-label">ISBN</span><span>@(Model.ISBN ?? "—")</span>
+        <span class="meta-label">Category</span><span>@(Model.CategoryName ?? "—")</span>
+        <span class="meta-label">Language</span><span>@(Model.Language ?? "—")</span>
+        <span class="meta-label">Pages</span><span>@(Model.PageCount?.ToString() ?? "—")</span>
+        <span class="meta-label">Published</span><span>@(Model.PublishYear?.ToString() ?? "—")</span>
+        <span class="meta-label">Available</span><span>@Model.AvailableCopies copies</span>
+    </div>
+    @if (Request.IsAuthenticated)
+    {
+        <button class="borrow-btn" onclick="borrowBook(@Model.BookId)">Borrow now</button>
+    }
+    else
+    {
+        <a href="@Url.Action("Login","Account",new{returnUrl=Request.Url})" class="borrow-btn" style="text-align:center;display:block;text-decoration:none">
+            Log in to Borrow
+        </a>
+    }
+</div>

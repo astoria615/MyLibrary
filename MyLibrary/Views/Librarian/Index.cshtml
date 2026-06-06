@@ -1,0 +1,150 @@
+﻿@model MyLibrary.Models.ViewModels.LibrarianDashboardViewModel
+@{
+    ViewBag.Title = "Dashboard";
+    Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+}
+
+<div class="lib-dashboard">
+    <div class="stat-cards">
+        <div class="stat-card">
+            <span class="stat-card-num">@Model.TotalBooks</span>
+            <span class="stat-card-label">Total Books</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card-num">@Model.TotalReaders</span>
+            <span class="stat-card-label">Total Readers</span>
+        </div>
+        <div class="stat-card stat-card-warn">
+            <span class="stat-card-num">@Model.PendingRequests</span>
+            <span class="stat-card-label">Pending borrow request</span>
+        </div>
+        <div class="stat-card stat-card-blue">
+            <span class="stat-card-num">@Model.ActiveBorrowings</span>
+            <span class="stat-card-label">Active borrowing</span>
+        </div>
+    </div>
+
+    <div class="lib-section">
+        <h2>Recent activities</h2>
+        <div class="scrollable-activity-panel">
+            <div class="activity-list" id="activity-list">
+                @foreach (var item in Model.RecentActivities)
+                {
+                    <div class="activity-row" onclick="toggleActivity(@item.BorrowingId)">
+                        <div class="activity-title-row">
+                            <div class="activity-left">
+                                <span class="activity-icon">📋</span>
+                                <div>
+                                    <span class="activity-title">
+                                        Accept borrow request from user: <strong>@item.ReaderName</strong>
+                                        <span class="borrow-status status-@item.Status.ToLower()">@item.Status</span>
+                                    </span>
+                                    <span class="activity-sub">
+                                        @item.Books.Count book(s) · Borrowed: @item.BorrowDate.ToString("MMM dd, yyyy") · Due: @item.DueDate.ToString("MMM dd, yyyy")
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="activity-chevron" id="chev-@item.BorrowingId">▶</span>
+                        </div>
+
+                        <div class="activity-detail" id="detail-@item.BorrowingId" style="display:none"
+                             onclick="event.stopPropagation()">
+                            <div class="activity-books">
+                                @foreach (var book in item.Books)
+                                {
+                                    <div class="activity-book-item">
+                                        <div class="borrow-cover">
+                                            @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                            {
+                                                <img src="@book.CoverUrl" alt="@book.Title" />
+                                            }
+                                            else
+                                            {
+                                                <div class="cover-placeholder">📖</div>
+                                            }
+                                        </div>
+                                        <div>
+                                            <span class="activity-book-title">@book.Title</span>
+                                            @if (!string.IsNullOrEmpty(book.Condition))
+                                            {
+                                                <span class="activity-book-cond">Condition: @book.Condition</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            @if (item.Status == "Pending")
+                            {
+                                <div class="activity-actions">
+                                    <button class="btn-approve" onclick="approveBorrow(@item.BorrowingId)">
+                                        ✓ Approve
+                                    </button>
+                                    <button class="btn-reject" onclick="rejectBorrow(@item.BorrowingId)">
+                                        ✕ Reject
+                                    </button>
+                                </div>
+                            }
+                            else if (item.Status == "Approved")
+                            {
+                                <div class="activity-actions">
+                                    <button class="btn-return" onclick="markReturned(@item.BorrowingId)">
+                                        ↩ Mark Returned
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    </div>
+
+@section Scripts {
+    <script>
+        function toggleActivity(id) {
+            var detail = document.getElementById('detail-' + id);
+            var chev = document.getElementById('chev-' + id);
+            var open = detail.style.display === 'block';
+            detail.style.display = open ? 'none' : 'block';
+            chev.textContent = open ? '▶' : '▼';
+        }
+
+        function approveBorrow(id) {
+            if (!confirm('Approve this borrow request?')) return;
+            fetch('/Librarian/ApproveBorrow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'borrowingId=' + id
+            }).then(r => r.json()).then(data => {
+                alert(data.message);
+                location.reload();
+            });
+        }
+
+        function rejectBorrow(id) {
+            if (!confirm('Reject this borrow request?')) return;
+            fetch('/Librarian/RejectBorrow', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'borrowingId=' + id
+            }).then(r => r.json()).then(data => {
+                alert(data.message);
+                location.reload();
+            });
+        }
+
+        function markReturned(id) {
+            if (!confirm('Mark this borrowing as returned?')) return;
+            fetch('/Librarian/MarkReturned', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'borrowingId=' + id
+            }).then(r => r.json()).then(data => {
+                alert(data.message);
+                location.reload();
+            });
+        }
+    </script>
+}
