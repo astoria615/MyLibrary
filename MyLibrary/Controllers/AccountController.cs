@@ -151,27 +151,40 @@ namespace MyLibrary.Controllers
         public ActionResult Profile()
         {
             int userId = int.Parse(User.Identity.Name);
-            var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-            if (user == null) return RedirectToAction("Logout");
 
-            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
-            var vm = new ProfileViewModel
+            // Use fresh context to avoid stale cache
+            using (var freshDb = new LibraryDataContext())
             {
-                UserId = user.UserId,
-                Email = user.Email,
-                FullName = user.FullName,
-                Phone = user.Phone,
-                Address = user.Address,
-                AvatarUrl = user.AvatarUrl,
-                Gender = reader?.Gender,
-                DateOfBirth = reader?.DateOfBirth,
-                ReaderCode = reader?.ReaderCode ?? "—",
-                MembershipDate = reader?.MembershipDate,
-                MembershipExpiry = reader?.MembershipExpiry,
-                TotalBorrowed = reader?.TotalBorrowed ?? 0,
-                TotalFines = reader?.TotalFines ?? 0
-            };
-            return View(vm);
+                var user = freshDb.UserAccounts.FirstOrDefault(u => u.UserId == userId);
+                if (user == null) return RedirectToAction("Logout");
+
+                var reader = freshDb.Readers.FirstOrDefault(r => r.UserId == userId);
+                var librarian = freshDb.Librarians.FirstOrDefault(l => l.UserId == userId);
+
+                var vm = new ProfileViewModel
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Phone = user.Phone,
+                    Address = user.Address,
+                    AvatarUrl = user.AvatarUrl,
+                    Role = user.Role,
+                    IsActive = user.IsActive,
+                    Gender = reader != null ? reader.Gender : null,
+                    DateOfBirth = reader != null ? reader.DateOfBirth : null,
+                    ReaderCode = reader != null ? reader.ReaderCode : "—",
+                    MembershipDate = reader != null ? reader.MembershipDate : (DateTime?)null,
+                    MembershipExpiry = reader != null ? reader.MembershipExpiry : (DateTime?)null,
+                    TotalBorrowed = reader != null ? reader.TotalBorrowed : 0,
+                    TotalFines = reader != null ? reader.TotalFines : 0,
+                    LibrarianCode = librarian != null ? librarian.LibrarianCode : null,
+                    Department = librarian != null ? librarian.Department : null,
+                    HireDate = librarian != null ? librarian.HireDate : (DateTime?)null
+                };
+
+                return View(vm);
+            }
         }
 
         [Authorize]
@@ -183,24 +196,34 @@ namespace MyLibrary.Controllers
             var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
             if (user == null) return RedirectToAction("Logout");
 
-            user.FullName = model.FullName;
+            if (!user.IsActive)
+            {
+                TempData["Error"] = "Your account is deactivated.";
+                return RedirectToAction("Profile");
+            }
+
+            // Save user fields
+            user.FullName = model.FullName ?? user.FullName;
             user.Phone = model.Phone;
             user.Address = model.Address;
-            if (!string.IsNullOrEmpty(model.AvatarUrl))
-                user.AvatarUrl = model.AvatarUrl;
             user.UpdatedAt = DateTime.Now;
 
+            if (!string.IsNullOrEmpty(model.AvatarUrl))
+                user.AvatarUrl = model.AvatarUrl;
+
+            db.SubmitChanges();
+
+            // Save reader fields separately with a fresh context lookup
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
             if (reader != null)
             {
                 reader.Gender = model.Gender;
                 reader.DateOfBirth = model.DateOfBirth;
+                db.SubmitChanges();
             }
 
-            db.SubmitChanges();
-
             Session["FullName"] = user.FullName;
-            Session["AvatarUrl"] = user.AvatarUrl;
+            Session["AvatarUrl"] = user.AvatarUrl ?? "";
 
             TempData["Success"] = "Profile updated successfully!";
             return RedirectToAction("Profile");

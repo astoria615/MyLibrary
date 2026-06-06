@@ -43,6 +43,8 @@ namespace MyLibrary.Models.ViewModels
     {
         public int UserId { get; set; }
         public string Email { get; set; }
+        public string Role { get; set; }
+        public bool IsActive { get; set; }
 
         [Required]
         public string FullName { get; set; }
@@ -51,11 +53,18 @@ namespace MyLibrary.Models.ViewModels
         public string AvatarUrl { get; set; }
         public string Gender { get; set; }
         public DateTime? DateOfBirth { get; set; }
+
+        // Reader fields
         public string ReaderCode { get; set; }
         public DateTime? MembershipDate { get; set; }
         public DateTime? MembershipExpiry { get; set; }
         public int TotalBorrowed { get; set; }
         public decimal TotalFines { get; set; }
+
+        // Librarian fields
+        public string LibrarianCode { get; set; }
+        public string Department { get; set; }
+        public DateTime? HireDate { get; set; }
     }
 
     public class BorrowHistoryItem
