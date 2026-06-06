@@ -4,9 +4,9 @@ using System;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
-
 
 namespace MyLibrary.Controllers
 {
@@ -14,44 +14,116 @@ namespace MyLibrary.Controllers
     {
         private LibraryDataContext db = new LibraryDataContext();
 
-        // ── LOGIN ──
-        private void RefreshSession()
+        // ── CHECK REMEMBER ME COOKIE ──
+        private bool IsPersistentAuthCookie()
         {
-            if (Request.IsAuthenticated && Session["FullName"] == null)
+            var cookie = Request.Cookies[FormsAuthentication.FormsCookieName];
+
+            if (cookie == null || string.IsNullOrEmpty(cookie.Value))
+                return false;
+
+            try
             {
-                int userId = int.Parse(User.Identity.Name);
-                var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-                if (user != null)
-                {
-                    Session["UserId"] = user.UserId;
-                    Session["FullName"] = user.FullName;
-                    Session["AvatarUrl"] = user.AvatarUrl ?? "";
-                    Session["Role"] = user.Role;
-                }
+                var ticket = FormsAuthentication.Decrypt(cookie.Value);
+                return ticket != null && ticket.IsPersistent;
+            }
+            catch
+            {
+                return false;
             }
         }
+
+        // ── CLEAR LOGIN COOKIE ──
+        private void ClearLoginCookie()
+        {
+            FormsAuthentication.SignOut();
+
+            var expiredCookie = new HttpCookie(FormsAuthentication.FormsCookieName)
+            {
+                Expires = DateTime.Now.AddDays(-1),
+                HttpOnly = true
+            };
+
+            Response.Cookies.Add(expiredCookie);
+
+            Session.Clear();
+            Session.Abandon();
+        }
+
+        // ── REFRESH SESSION ──
+        private bool RefreshSession()
+        {
+            if (!Request.IsAuthenticated)
+                return false;
+
+            // Nếu session mất sau khi chạy lại project
+            // mà cookie không phải Remember me thì bắt login lại
+            if (Session["UserId"] == null && !IsPersistentAuthCookie())
+            {
+                ClearLoginCookie();
+                return false;
+            }
+
+            int userId;
+
+            if (!int.TryParse(User.Identity.Name, out userId))
+            {
+                ClearLoginCookie();
+                return false;
+            }
+
+            var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId && u.IsActive);
+
+            if (user == null)
+            {
+                ClearLoginCookie();
+                return false;
+            }
+
+            Session["UserId"] = user.UserId;
+            Session["FullName"] = user.FullName;
+            Session["AvatarUrl"] = user.AvatarUrl ?? "";
+            Session["Role"] = user.Role;
+
+            return true;
+        }
+
+        // ── LOGIN GET ──
         public ActionResult Login(string returnUrl)
         {
             if (Request.IsAuthenticated)
             {
+                if (!RefreshSession())
+                {
+                    ViewBag.ReturnUrl = returnUrl;
+                    return View();
+                }
+
                 string role = Session["Role"] != null ? Session["Role"].ToString() : "";
+
                 if (role == "Admin")
                     return RedirectToAction("Index", "Admin");
+
                 if (role == "Librarian")
                     return RedirectToAction("Index", "Librarian");
+
                 return RedirectToAction("Index", "Guest");
             }
+
             ViewBag.ReturnUrl = returnUrl;
             return View();
         }
 
+        // ── LOGIN POST ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Login(LoginViewModel model, string returnUrl)
         {
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid)
+                return View(model);
 
             string hash = HashPassword(model.Password);
+
             var user = db.UserAccounts.FirstOrDefault(u =>
                 u.Email == model.Email &&
                 u.PasswordHash == hash &&
@@ -63,42 +135,74 @@ namespace MyLibrary.Controllers
                 return View(model);
             }
 
-            // Only allow Reader and Librarian/Admin to log in here
             if (user.Role != "Reader" && user.Role != "Librarian" && user.Role != "Admin")
             {
                 ModelState.AddModelError("", "Access denied.");
                 return View(model);
             }
 
-            // Set auth cookie — persistent ONLY if Remember Me checked
-            FormsAuthentication.SetAuthCookie(user.UserId.ToString(), model.RememberMe);
+            // Xóa cookie cũ trước, tránh bị dính session reader/admin cũ
+            FormsAuthentication.SignOut();
 
-            // Store session data
+            DateTime now = DateTime.Now;
+            DateTime expireTime = model.RememberMe
+                ? now.AddDays(30)
+                : now.AddMinutes(60);
+
+            var ticket = new FormsAuthenticationTicket(
+                1,
+                user.UserId.ToString(),
+                now,
+                expireTime,
+                model.RememberMe,
+                user.Role,
+                FormsAuthentication.FormsCookiePath
+            );
+
+            string encryptedTicket = FormsAuthentication.Encrypt(ticket);
+
+            var authCookie = new HttpCookie(FormsAuthentication.FormsCookieName, encryptedTicket)
+            {
+                HttpOnly = true
+            };
+
+            // Chỉ khi tick Remember me mới lưu cookie lâu dài
+            if (model.RememberMe)
+                authCookie.Expires = expireTime;
+
+            Response.Cookies.Add(authCookie);
+
             Session["UserId"] = user.UserId;
             Session["FullName"] = user.FullName;
             Session["AvatarUrl"] = user.AvatarUrl ?? "";
             Session["Role"] = user.Role;
 
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                return Redirect(returnUrl);
+            // Không dùng returnUrl nữa để tránh Admin bị chuyển nhầm sang Librarian
+            if (user.Role == "Admin")
+                return RedirectToAction("Index", "Admin");
 
-            // Redirect based on role
-            if (user.Role == "Librarian" || user.Role == "Admin")
+            if (user.Role == "Librarian")
                 return RedirectToAction("Index", "Librarian");
 
             return RedirectToAction("Index", "Guest");
         }
+
+        // ── REGISTER GET ──
         public ActionResult Register()
         {
-            if (User.Identity.IsAuthenticated) return RedirectToAction("Index", "Guest");
+            if (User.Identity.IsAuthenticated)
+                return RedirectToAction("Index", "Guest");
+
             return View();
         }
 
+        // ── REGISTER POST ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Register(RegisterViewModel model)
         {
-            if (!ModelState.IsValid) return View(model);
+            if (!ModelState.IsValid)
+                return View(model);
 
             if (db.UserAccounts.Any(u => u.Email == model.Email))
             {
@@ -119,11 +223,12 @@ namespace MyLibrary.Controllers
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
             };
+
             db.UserAccounts.InsertOnSubmit(user);
             db.SubmitChanges();
 
-            // Create Reader profile
             string readerCode = "RDR-" + user.UserId.ToString("D3");
+
             var reader = new Reader
             {
                 UserId = user.UserId,
@@ -133,6 +238,7 @@ namespace MyLibrary.Controllers
                 TotalBorrowed = 0,
                 TotalFines = 0
             };
+
             db.Readers.InsertOnSubmit(reader);
             db.SubmitChanges();
 
@@ -143,22 +249,22 @@ namespace MyLibrary.Controllers
         // ── LOGOUT ──
         public ActionResult Logout()
         {
-            FormsAuthentication.SignOut();
-            Session.Clear();
+            ClearLoginCookie();
             return RedirectToAction("Index", "Guest");
         }
 
-        // ── PROFILE ──
+        // ── PROFILE GET ──
         [Authorize]
         public ActionResult Profile()
         {
             int userId = int.Parse(User.Identity.Name);
 
-            // Use fresh context to avoid stale cache
             using (var freshDb = new LibraryDataContext())
             {
                 var user = freshDb.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-                if (user == null) return RedirectToAction("Logout");
+
+                if (user == null)
+                    return RedirectToAction("Logout");
 
                 var reader = freshDb.Readers.FirstOrDefault(r => r.UserId == userId);
                 var librarian = freshDb.Librarians.FirstOrDefault(l => l.UserId == userId);
@@ -173,6 +279,7 @@ namespace MyLibrary.Controllers
                     AvatarUrl = user.AvatarUrl,
                     Role = user.Role,
                     IsActive = user.IsActive,
+
                     Gender = reader != null ? reader.Gender : null,
                     DateOfBirth = reader != null ? reader.DateOfBirth : null,
                     ReaderCode = reader != null ? reader.ReaderCode : "—",
@@ -180,6 +287,7 @@ namespace MyLibrary.Controllers
                     MembershipExpiry = reader != null ? reader.MembershipExpiry : (DateTime?)null,
                     TotalBorrowed = reader != null ? reader.TotalBorrowed : 0,
                     TotalFines = reader != null ? reader.TotalFines : 0,
+
                     LibrarianCode = librarian != null ? librarian.LibrarianCode : null,
                     Department = librarian != null ? librarian.Department : null,
                     HireDate = librarian != null ? librarian.HireDate : (DateTime?)null
@@ -189,14 +297,18 @@ namespace MyLibrary.Controllers
             }
         }
 
+        // ── PROFILE POST ──
         [Authorize]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Profile(ProfileViewModel model)
         {
             int userId = int.Parse(User.Identity.Name);
+
             var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-            if (user == null) return RedirectToAction("Logout");
+
+            if (user == null)
+                return RedirectToAction("Logout");
 
             if (!user.IsActive)
             {
@@ -204,7 +316,6 @@ namespace MyLibrary.Controllers
                 return RedirectToAction("Profile");
             }
 
-            // Save user fields
             user.FullName = model.FullName ?? user.FullName;
             user.Phone = model.Phone;
             user.Address = model.Address;
@@ -215,8 +326,8 @@ namespace MyLibrary.Controllers
 
             db.SubmitChanges();
 
-            // Save reader fields separately with a fresh context lookup
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+
             if (reader != null)
             {
                 reader.Gender = model.Gender;
@@ -226,12 +337,13 @@ namespace MyLibrary.Controllers
 
             Session["FullName"] = user.FullName;
             Session["AvatarUrl"] = user.AvatarUrl ?? "";
+            Session["Role"] = user.Role;
 
             TempData["Success"] = "Profile updated successfully!";
             return RedirectToAction("Profile");
         }
 
-        // ── HELPER ──
+        // ── HASH PASSWORD ──
         private string HashPassword(string password)
         {
             using (var sha = SHA256.Create())
@@ -243,7 +355,9 @@ namespace MyLibrary.Controllers
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) db.Dispose();
+            if (disposing)
+                db.Dispose();
+
             base.Dispose(disposing);
         }
     }
