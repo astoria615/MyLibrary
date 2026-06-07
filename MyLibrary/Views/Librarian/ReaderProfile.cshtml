@@ -1,0 +1,191 @@
+﻿@model MyLibrary.Models.ReaderProfileViewModel
+@{
+    ViewBag.Title = "Reader Account Profile";
+}
+
+<style>
+    /* ── TITLE & FONTS SYNC ── */
+    .profile-heading {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        font-size: 24px;
+        color: inherit;
+        margin-bottom: 20px;
+    }
+
+    /* ── SYSTEM THEME INTEGRATED CARD WORKSPACE ── */
+    /* Instead of independent states, these look directly at your main body global dark theme classes */
+    .profile-panel-container {
+        background-color: #ffffff;
+        color: #212529;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 24px;
+        transition: all 0.25s ease-in-out;
+    }
+
+    body.dark-mode .profile-panel-container,
+    body.dark .profile-panel-container,
+    [data-theme="dark"] .profile-panel-container {
+        background-color: #1e1e1e !important;
+        color: #f8f9fa !important;
+        border-color: #333333 !important;
+    }
+
+    /* Form and Badge Input fields matching image_3c17ae.png */
+    .profile-info-field {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 10px 14px;
+        color: inherit;
+        margin-bottom: 12px;
+    }
+
+    body.dark-mode .profile-info-field,
+    body.dark .profile-info-field,
+    [data-theme="dark"] .profile-info-field {
+        background-color: #151515 !important;
+        border-color: #2a2a2a !important;
+        color: #e0e0e0 !important;
+    }
+
+    /* ── SYSTEM ADAPTIVE TABLE ── */
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+        .history-table th {
+            border-bottom: 2px solid #dee2e6;
+            padding: 12px 10px;
+            text-align: left;
+        }
+
+        .history-table td {
+            border-bottom: 1px solid #dee2e6;
+            padding: 12px 10px;
+        }
+
+    body.dark-mode .history-table th, [data-theme="dark"] .history-table th {
+        border-bottom-color: #444444;
+    }
+
+    body.dark-mode .history-table td, [data-theme="dark"] .history-table td {
+        border-bottom-color: #333333;
+    }
+
+    body.dark-mode .history-table tr:nth-child(even),
+    [data-theme="dark"] .history-table tr:nth-child(even) {
+        background-color: #252525;
+    }
+
+    .custom-text-muted {
+        color: #6c757d;
+    }
+
+    body.dark-mode .custom-text-muted, [data-theme="dark"] .custom-text-muted {
+        color: #a0a0a0 !important;
+    }
+</style>
+
+<div class="container-fluid" style="padding-top: 20px;">
+
+    <!-- Header Title Area with Clean Font -->
+    <div class="d-flex justify-content-between align-items-center mb-4" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="profile-heading">Reader Diagnostic Account File</h2>
+        <div>
+            <a href="@Url.Action("Readers", "Librarian")" class="btn" style="background-color: #6c757d; color: white; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 13px; font-weight: 500;">
+                Back to Directory
+            </a>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+
+        <!-- Left Column: Unified Profile Card Component -->
+        <div style="flex: 1; min-width: 320px;">
+            <div class="profile-panel-container">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "/Content/images/default-avatar.png" : Model.AvatarUrl)"
+                         style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #dee2e6; background-color: #fff;"
+                         alt="Reader Avatar"
+                         onerror="this.src='/Content/images/default-avatar.png'" />
+
+                    <h3 style="margin: 15px 0 5px 0; font-family: 'Inter', sans-serif;">@Model.FullName</h3>
+                    <p class="custom-text-muted" style="margin: 0; font-size: 13px;">System Identifier: #@Model.ReaderId</p>
+                </div>
+
+                <h5 style="font-family: 'Inter', sans-serif; margin-bottom: 12px; font-weight: 600;">Personal Information</h5>
+
+                <label class="custom-text-muted" style="font-size: 12px; font-weight: 500;">Email Address</label>
+                <div class="profile-info-field">@(Model.Email ?? "No registered email address")</div>
+
+                <label class="custom-text-muted" style="font-size: 12px; font-weight: 500;">Contact Phone</label>
+                <div class="profile-info-field">@(Model.Phone ?? "No active phone link")</div>
+
+                <label class="custom-text-muted" style="font-size: 12px; font-weight: 500;">Residential Address</label>
+                <div class="profile-info-field">@(Model.Address ?? "No verified home listing")</div>
+
+                <label class="custom-text-muted" style="font-size: 12px; font-weight: 500;">Penalty Balances Context</label>
+                <div class="profile-info-field" style="color: #dc3545; font-weight: bold;">@Model.TotalFines.ToString("N0") VND</div>
+            </div>
+        </div>
+
+        <!-- Right Column: System Transaction Ledger History -->
+        <div style="flex: 2; min-width: 450px;">
+            <div class="profile-panel-container">
+                <h4 style="margin-top: 0; margin-bottom: 6px; font-family: 'Inter', sans-serif; font-weight: 600;">Loan Transaction Ledger History</h4>
+                <p class="custom-text-muted" style="margin-top: 0; margin-bottom: 20px; font-size: 13px;">Historical activity log context of books issued under this user identity registry.</p>
+
+                @if (Model.BorrowingHistory == null || !Model.BorrowingHistory.Any())
+                {
+                    <div style="background-color: rgba(255, 193, 7, 0.15); color: #856404; padding: 14px; border-radius: 6px; font-size: 14px;">
+                        No system logging records are currently associated with this reader's account file.
+                    </div>
+                }
+                else
+                {
+                    <div style="overflow-x: auto;">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Loan Key</th>
+                                    <th>Books Checked Out</th>
+                                    <th>Issued</th>
+                                    <th>Returned</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var record in Model.BorrowingHistory)
+                                {
+                                    <tr>
+                                        <td><strong>#@record.BorrowingId</strong></td>
+                                        <td>
+                                            <ul style="padding-left: 16px; margin: 0; font-size: 13px;">
+                                                @foreach (var bk in record.Books)
+                                                {
+                                                    <li>@bk.Title <small class="custom-text-muted">(@bk.Condition)</small></li>
+                                                }
+                                            </ul>
+                                        </td>
+                                        <td style="font-size: 13px;">@record.BorrowDate.ToString("yyyy-MM-dd")</td>
+                                        <td style="font-size: 13px;">@(record.ReturnDate.HasValue ? record.ReturnDate.Value.ToString("yyyy-MM-dd") : "Out on Loan")</td>
+                                        <td>
+                                            <span style="background-color: @(record.Status == "Returned" ? "#28a745" : record.Status == "Overdue" ? "#dc3545" : "#17a2b8"); color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block;">
+                                                @record.Status
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</div>

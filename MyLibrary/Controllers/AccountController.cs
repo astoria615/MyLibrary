@@ -2,6 +2,8 @@
 using MyLibrary.Models.ViewModels;
 using System;
 using System.Linq;
+using System.Net;
+using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Web;
@@ -56,8 +58,6 @@ namespace MyLibrary.Controllers
             if (!Request.IsAuthenticated)
                 return false;
 
-            // Nếu session mất sau khi chạy lại project
-            // mà cookie không phải Remember me thì bắt login lại
             if (Session["UserId"] == null && !IsPersistentAuthCookie())
             {
                 ClearLoginCookie();
@@ -141,7 +141,6 @@ namespace MyLibrary.Controllers
                 return View(model);
             }
 
-            // Xóa cookie cũ trước, tránh bị dính session reader/admin cũ
             FormsAuthentication.SignOut();
 
             DateTime now = DateTime.Now;
@@ -166,7 +165,6 @@ namespace MyLibrary.Controllers
                 HttpOnly = true
             };
 
-            // Chỉ khi tick Remember me mới lưu cookie lâu dài
             if (model.RememberMe)
                 authCookie.Expires = expireTime;
 
@@ -177,7 +175,6 @@ namespace MyLibrary.Controllers
             Session["AvatarUrl"] = user.AvatarUrl ?? "";
             Session["Role"] = user.Role;
 
-            // Không dùng returnUrl nữa để tránh Admin bị chuyển nhầm sang Librarian
             if (user.Role == "Admin")
                 return RedirectToAction("Index", "Admin");
 
@@ -196,20 +193,33 @@ namespace MyLibrary.Controllers
             return View();
         }
 
-        // ── REGISTER POST ──
+        // ── REGISTER POST (UPDATED WITH 4-DIGIT CODE VALIDATION) ──
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Register(RegisterViewModel model)
+        public ActionResult Register(RegisterViewModel model, string inputCode)
         {
             if (!ModelState.IsValid)
                 return View(model);
 
-            if (db.UserAccounts.Any(u => u.Email == model.Email))
+            // 1. Fetch saved validation info from Session state cache
+            string sessionCode = Session["EmailVerificationCode"] as string;
+            string sessionEmail = Session["TargetVerificationEmail"] as string;
+
+            // 2. Validate code match state limits
+            if (string.IsNullOrEmpty(sessionCode) || inputCode != sessionCode || model.Email != sessionEmail)
             {
-                ModelState.AddModelError("Email", "This email is already registered.");
+                ModelState.AddModelError("", "The verification code is incorrect, mismatched, or has expired.");
                 return View(model);
             }
 
+            // 3. Double check database availability path right before database writing operations
+            if (db.UserAccounts.Any(u => u.Email == model.Email))
+            {
+                ModelState.AddModelError("Email", "This email address was registered by another user session.");
+                return View(model);
+            }
+
+            // 4. Verification Successful! Commit account record elements
             var user = new UserAccount
             {
                 Email = model.Email,
@@ -218,7 +228,7 @@ namespace MyLibrary.Controllers
                 Phone = model.Phone,
                 Role = "Reader",
                 IsActive = true,
-                IsEmailVerified = false,
+                IsEmailVerified = true, // Flagged true since verified via email channel
                 FailedLoginAttempts = 0,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
@@ -242,105 +252,71 @@ namespace MyLibrary.Controllers
             db.Readers.InsertOnSubmit(reader);
             db.SubmitChanges();
 
-            TempData["Success"] = "Account created! Please log in.";
+            // 5. Clean up temporary session usage values
+            Session["EmailVerificationCode"] = null;
+            Session["TargetVerificationEmail"] = null;
+
+            TempData["Success"] = "Account verified and created successfully! Please log in.";
             return RedirectToAction("Login");
         }
 
-        // ── LOGOUT ──
-        public ActionResult Logout()
-        {
-            ClearLoginCookie();
-            return RedirectToAction("Index", "Guest");
-        }
-
-        // ── PROFILE GET ──
-        [Authorize]
-        public ActionResult Profile()
-        {
-            int userId = int.Parse(User.Identity.Name);
-
-            using (var freshDb = new LibraryDataContext())
-            {
-                var user = freshDb.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-
-                if (user == null)
-                    return RedirectToAction("Logout");
-
-                var reader = freshDb.Readers.FirstOrDefault(r => r.UserId == userId);
-                var librarian = freshDb.Librarians.FirstOrDefault(l => l.UserId == userId);
-
-                var vm = new ProfileViewModel
-                {
-                    UserId = user.UserId,
-                    Email = user.Email,
-                    FullName = user.FullName,
-                    Phone = user.Phone,
-                    Address = user.Address,
-                    AvatarUrl = user.AvatarUrl,
-                    Role = user.Role,
-                    IsActive = user.IsActive,
-
-                    Gender = reader != null ? reader.Gender : null,
-                    DateOfBirth = reader != null ? reader.DateOfBirth : null,
-                    ReaderCode = reader != null ? reader.ReaderCode : "—",
-                    MembershipDate = reader != null ? reader.MembershipDate : (DateTime?)null,
-                    MembershipExpiry = reader != null ? reader.MembershipExpiry : (DateTime?)null,
-                    TotalBorrowed = reader != null ? reader.TotalBorrowed : 0,
-                    TotalFines = reader != null ? reader.TotalFines : 0,
-
-                    LibrarianCode = librarian != null ? librarian.LibrarianCode : null,
-                    Department = librarian != null ? librarian.Department : null,
-                    HireDate = librarian != null ? librarian.HireDate : (DateTime?)null
-                };
-
-                return View(vm);
-            }
-        }
-
-        // ── PROFILE POST ──
-        [Authorize]
+        // ── AJAX SERVICE: GENERATE AND DISTRIBUTE CODES OVER SMTP MAIL NETWORKS ──
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Profile(ProfileViewModel model)
+        public JsonResult SendVerificationCode(string email, string fullName)
         {
-            int userId = int.Parse(User.Identity.Name);
-
-            var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-
-            if (user == null)
-                return RedirectToAction("Logout");
-
-            if (!user.IsActive)
+            try
             {
-                TempData["Error"] = "Your account is deactivated.";
-                return RedirectToAction("Profile");
+                // Safety checkpoint: Block sending if the email already belongs to a registered account
+                if (db.UserAccounts.Any(u => u.Email == email))
+                {
+                    return Json(new { success = false, message = "This email is already registered to another account context." });
+                }
+
+                // Generate a random 4-digit security code
+                Random rand = new Random();
+                string verificationCode = rand.Next(1000, 9999).ToString();
+
+                // Store code information context into active Session
+                Session["EmailVerificationCode"] = verificationCode;
+                Session["TargetVerificationEmail"] = email;
+
+                // ⚠️ SYSTEM ACCOUNT SMTP PARAMETERS
+                string mySenderEmail = "your.real.email@gmail.com";
+                string myAppPassword = "your-16-character-app-password"; // Insert 16-character password here with no spaces
+
+                using (MailMessage mail = new MailMessage())
+                {
+                    mail.From = new MailAddress(mySenderEmail, "My Library Security");
+                    mail.To.Add(email);
+                    mail.Subject = "Your My Library Verification Code";
+                    mail.Body = $@"Hello {fullName},
+
+Your 4-digit account security verification code is: {verificationCode}
+
+Please enter this code on the registration page interface component to verify your registration request.
+
+Best regards,
+My Library System Administration";
+
+                    mail.IsBodyHtml = false;
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                    {
+                        smtp.UseDefaultCredentials = false;
+                        smtp.Credentials = new NetworkCredential(mySenderEmail, myAppPassword);
+                        smtp.EnableSsl = true;
+                        smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+
+                        smtp.Send(mail);
+                    }
+                }
+
+                return Json(new { success = true, message = "Verification text dispatched seamlessly to your real email listing address!" });
             }
-
-            user.FullName = model.FullName ?? user.FullName;
-            user.Phone = model.Phone;
-            user.Address = model.Address;
-            user.UpdatedAt = DateTime.Now;
-
-            if (!string.IsNullOrEmpty(model.AvatarUrl))
-                user.AvatarUrl = model.AvatarUrl;
-
-            db.SubmitChanges();
-
-            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
-
-            if (reader != null)
+            catch (Exception ex)
             {
-                reader.Gender = model.Gender;
-                reader.DateOfBirth = model.DateOfBirth;
-                db.SubmitChanges();
+                return Json(new { success = false, message = "SMTP pipeline handling error: " + ex.GetBaseException().Message });
             }
-
-            Session["FullName"] = user.FullName;
-            Session["AvatarUrl"] = user.AvatarUrl ?? "";
-            Session["Role"] = user.Role;
-
-            TempData["Success"] = "Profile updated successfully!";
-            return RedirectToAction("Profile");
         }
 
         // ── HASH PASSWORD ──
@@ -352,7 +328,24 @@ namespace MyLibrary.Controllers
                 return BitConverter.ToString(bytes).Replace("-", "").ToUpper();
             }
         }
+        [HttpGet] // Ensure this is a GET request
+        public ActionResult Logout()
+        {
+            // 1. Clear session and cookie
+            FormsAuthentication.SignOut();
+            Session.Clear();
+            Session.Abandon();
 
+            // 2. Explicitly clear the auth cookie
+            var cookie = new HttpCookie(FormsAuthentication.FormsCookieName)
+            {
+                Expires = DateTime.Now.AddDays(-1)
+            };
+            Response.Cookies.Add(cookie);
+
+            // 3. Force redirect to Guest Index
+            return RedirectToAction("Index", "Guest");
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing)

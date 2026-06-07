@@ -590,6 +590,75 @@ namespace MyLibrary.Controllers
 
             return Json(readers, JsonRequestBehavior.AllowGet);
         }
+        /// <summary>
+        /// GET: /Librarian/Setting
+        /// Renders system preferences while maintaining the librarian dashboard layout shell context.
+        /// </summary>
+        public ActionResult Setting()
+        {
+            if (!IsLibrarian()) return RedirectToLogin();
+
+            return View();
+        }
+        // ── READERS MANAGEMENT & PROFILES ──
+
+        // 1. GET: /Librarian/Readers
+        // Renders the entire collection directory
+        public ActionResult Readers()
+        {
+            if (!IsLibrarian()) return RedirectToLogin();
+
+            var readersList = (from r in db.Readers
+                               join u in db.UserAccounts on r.UserId equals u.UserId
+                               orderby u.FullName
+                               select new ReaderProfileViewModel
+                               {
+                                   ReaderId = r.ReaderId,
+                                   UserId = u.UserId,
+                                   FullName = u.FullName,
+                                   Email = u.Email,
+                                   Phone = u.Phone,
+                                   TotalFines = r.TotalFines
+                               }).ToList();
+
+            return View(readersList); // Passes a List<ReaderProfileViewModel>
+        }
+
+        // 2. GET: /Librarian/ReaderProfile/{id}
+        // Renders the standalone individual workspace detail card
+        public ActionResult ReaderProfile(int id)
+        {
+            if (!IsLibrarian()) return RedirectToLogin();
+
+            var profile = (from r in db.Readers
+                           join u in db.UserAccounts on r.UserId equals u.UserId
+                           where r.ReaderId == id
+                           select new ReaderProfileViewModel
+                           {
+                               ReaderId = r.ReaderId,
+                               UserId = u.UserId,
+                               FullName = u.FullName,
+                               Email = u.Email,
+                               Phone = u.Phone,
+                               Address = u.Address,
+                               AvatarUrl = u.AvatarUrl,
+                               TotalFines = r.TotalFines
+                           }).FirstOrDefault(); // Extracts a single instance object
+
+            if (profile == null)
+            {
+                return HttpNotFound("Reader not found.");
+            }
+
+            // Populate borrowing history list via your activity method
+            profile.BorrowingHistory = BuildActivityList(db.Borrowings
+                .Where(b => b.ReaderId == id)
+                .OrderByDescending(b => b.BorrowDate)
+                .Select(b => b.BorrowingId)
+                .ToList());
+
+            return View(profile); // Passes a single ReaderProfileViewModel
+        }
 
         protected override void Dispose(bool disposing)
         {

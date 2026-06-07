@@ -4,9 +4,28 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@ViewBag.Title – MY LIBRARY</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/Content/library.css?v=5" />
+    <title>My Library</title>
+
+    <!-- ⚡ THE FLASH FIXER: Runs instantly before the body elements render -->
+    <script type="text/javascript">
+        (function () {
+            // Check localStorage using the exact storage key your reader app uses
+            // (Change "reader-theme" to whatever key your reader setting utilizes if different)
+            var savedTheme = localStorage.getItem("librarian-global-theme") || "dark";
+
+            if (savedTheme === "dark") {
+                document.documentElement.setAttribute("data-theme", "dark");
+                // Adds class to both html and body to satisfy all styling scenarios instantly
+                document.documentElement.classList.add("dark-mode");
+            } else {
+                document.documentElement.setAttribute("data-theme", "light");
+                document.documentElement.classList.remove("dark-mode");
+            }
+        })();
+    </script>
+
+    <!-- Your existing CSS style links remain below here -->
+    <link href="~/Content/library.css" rel="stylesheet" />
 </head>
 <body>
     <div class="app-shell">
@@ -48,7 +67,9 @@
             </ul>
             <div class="sidebar-divider"></div>
             <ul class="sidebar-nav sidebar-nav-bottom">
-                <li>@Html.ActionLink("Setting", "Setting", "Guest")</li>
+                <li>
+                    @Html.ActionLink("Setting", "Setting", "Guest", null, new { @class = Request.RequestContext.RouteData.Values["action"].ToString() == "Setting" ? "active" : "" })
+                </li>
                 <li>@Html.ActionLink("Support", "Support", "Guest")</li>
                 @if (Request.IsAuthenticated)
                 {

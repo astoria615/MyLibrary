@@ -251,52 +251,47 @@ namespace MyLibrary.Controllers
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
             if (reader == null) return RedirectToAction("Index", "Guest");
 
-            // 2. Fetch outstanding/unpaid fines using your actual column 'PaymentStatus'
-            var unpaidFines = db.Fines
-                .Where(f => f.ReaderId == reader.ReaderId && f.PaymentStatus == "Unpaid")
+            // 2. Fetch ALL historical and current fine records for this reader
+            var allFines = db.Fines
+                .Where(f => f.ReaderId == reader.ReaderId)
                 .OrderByDescending(f => f.IssuedDate)
                 .ToList();
 
-            // 3. Map database items into your ViewModels layout
-            var fineItems = unpaidFines.Select(f => {
+            // 3. Map database items into our structured FineDetailItem records
+            var mappedItems = allFines.Select(f => {
                 var detail = db.BorrowingDetails.FirstOrDefault(d => d.BorrowingId == f.BorrowingId);
                 var book = detail != null ? db.Books.FirstOrDefault(b => b.BookId == detail.BookId) : null;
 
-                // ── FIX: Read the actual FineType and Notes from the database ──
+                // Process fine type string safely
                 string infractionReason = "Overdue Book Return";
-
                 if (!string.IsNullOrEmpty(f.FineType))
                 {
                     if (f.FineType == "Damaged")
-                    {
-                        // Use the notes from SQL if available (e.g., "Pages torn")
-                        infractionReason = !string.IsNullOrEmpty(f.Notes) ? $"Damaged ({f.Notes})" : "Damaged / Loose Copy Asset Deficit";
-                    }
+                        infractionReason = !string.IsNullOrEmpty(f.Notes) ? $"Damaged ({f.Notes})" : "Damaged Asset Deficit";
                     else if (f.FineType == "Lost")
-                    {
                         infractionReason = !string.IsNullOrEmpty(f.Notes) ? $"Lost ({f.Notes})" : "Book reported lost";
-                    }
-                    else if (f.FineType == "Overdue")
-                    {
-                        infractionReason = "Overdue Book Return";
-                    }
                 }
 
                 return new FineDetailItem
                 {
                     FineId = f.FineId.ToString(),
                     IssuedDate = f.IssuedDate,
+                    PaymentDate = f.PaymentDate,
                     Amount = f.Amount,
-                    Reason = infractionReason, // Now holds your real dynamic reason!
+                    PaidAmount = f.PaidAmount,
+                    PaymentMethod = f.PaymentMethod ?? "N/A",
+                    PaymentStatus = f.PaymentStatus,
+                    Reason = infractionReason,
                     BookTitle = book?.Title ?? "General Account Penalty"
                 };
             }).ToList();
 
-            // 4. Construct complete parent view configuration model container
+            // 4. Group into Active vs Settled lists for view presentation layout
             var viewModel = new ReaderFinesViewModel
             {
-                FinesList = fineItems,
-                TotalFineAmount = fineItems.Sum(f => f.Amount)
+                ActiveFinesList = mappedItems.Where(f => f.PaymentStatus == "Unpaid").ToList(),
+                SettledFinesHistory = mappedItems.Where(f => f.PaymentStatus == "Paid").ToList(),
+                TotalFineAmount = mappedItems.Where(f => f.PaymentStatus == "Unpaid").Sum(f => f.Amount)
             };
 
             return View(viewModel);

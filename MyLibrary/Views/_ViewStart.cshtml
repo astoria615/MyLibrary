@@ -1,3 +1,11 @@
 ﻿@{
-    Layout = "~/Views/Shared/_Layout.cshtml";
+    // Dynamically detect user roles via active Session parameters
+    if (Session["Role"] != null && Session["Role"].ToString() == "Librarian")
+    {
+        Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml"; // Standard Reader Master Menu
+    }
 }

@@ -3,9 +3,21 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@ViewBag.Title – Librarian</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/Content/library.css?v=6" />
+    <title>@ViewBag.Title - My Library</title>
+
+    <!-- ⚡ Copying the working Reader script logic into the Head to stop the flash ⚡ -->
+    <script>
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.documentElement.classList.add('dark');
+
+            // This listener handles injecting it to the body as soon as the body becomes ready
+            document.addEventListener("DOMContentLoaded", function () {
+                document.body.classList.add('dark');
+            });
+        }
+    </script>
+
+    <link href="~/Content/library.css" rel="stylesheet" />
 </head>
 <body>
     <div class="app-shell">
@@ -22,10 +34,15 @@
                     @Html.ActionLink("Fine management", "FineManagement", "Librarian", null, new { @class = Request.RequestContext.RouteData.Values["action"].ToString() == "FineManagement" ? "active" : "" })
                 </li>
                 <li>@Html.ActionLink("Report Issue", "ReportIssue", "Librarian")</li>
+                <li>
+                    @Html.ActionLink("Reader Profiles & History", "Readers", "Librarian")
+                </li>
             </ul>
             <div class="sidebar-divider"></div>
             <ul class="sidebar-nav sidebar-nav-bottom">
-                <li>@Html.ActionLink("Setting", "Setting", "Guest")</li>
+                <li>
+                    @Html.ActionLink("Setting", "Setting", "Librarian", null, new { @class = Request.RequestContext.RouteData.Values["action"].ToString() == "Setting" ? "active" : "" })
+                </li>
                 <li>@Html.ActionLink("Logout", "Logout", "Account")</li>
             </ul>
         </nav>

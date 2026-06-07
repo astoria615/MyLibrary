@@ -1,0 +1,97 @@
+﻿@model IEnumerable<MyLibrary.Models.ReaderProfileViewModel>
+@{
+    ViewBag.Title = "Readers Directory";
+    Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+}
+
+<style>
+    /* ── TITLE FONT UPDATE ── */
+    .dashboard-heading {
+        font-family: 'Inter', sans-serif; /* Matches your layout body headers precisely */
+        font-weight: 600;
+        font-size: 24px;
+        color: inherit; /* Inherits whatever colors the active theme top headers use */
+        margin-bottom: 20px;
+    }
+
+    /* ── DIRECTORY DYNAMIC CONTAINER CARD ── */
+    .directory-card {
+        background-color: var(--card-bg, #ffffff); /* Tries to read from your global app theme variables if they exist */
+        color: var(--text-main, #212529);
+        border: 1px solid var(--border-color, #dee2e6);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border-radius: 8px;
+        padding: 20px;
+        transition: all 0.3s ease;
+    }
+
+
+    body.dark-mode .directory-card,
+    body.dark .directory-card,
+    html[data-theme="dark"] .directory-card,
+    body[data-theme="dark"] .directory-card,
+    .app-shell.dark-mode .directory-card,
+    .main-area.dark-mode .directory-card {
+        background-color: #1e1e1e !important;
+        color: #f8f9fa !important;
+        border-color: #333333 !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3) !important;
+    }
+
+    /* Keep table text visible and rows readable in dark contexts */
+    body.dark-mode .table th, body.dark-mode .table td,
+    body.dark .table th, body.dark .table td,
+    [data-theme="dark"] .table th, [data-theme="dark"] .table td {
+        color: #f8f9fa !important;
+        border-bottom-color: #333333 !important;
+    }
+
+    body.dark-mode .table-hover tbody tr:hover,
+    body.dark .table-hover tbody tr:hover,
+    [data-theme="dark"] .table-hover tbody tr:hover {
+        background-color: #2a2a2a !important;
+    }
+</style>
+
+<div class="container-fluid" style="padding-top: 20px;">
+    <!-- Font updated via class descriptor here -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="dashboard-heading">Library Readers Directory</h2>
+    </div>
+
+    <div class="directory-card">
+        <div style="overflow-x: auto;">
+            <table class="table table-hover" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #dee2e6; text-align: left;">
+                        <th style="padding: 12px;">Reader ID</th>
+                        <th style="padding: 12px;">Full Name</th>
+                        <th style="padding: 12px;">Email Address</th>
+                        <th style="padding: 12px;">Phone</th>
+                        <th style="padding: 12px;">Active Fines</th>
+                        <th style="padding: 12px; text-align: center;">Action Workspace</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td style="padding: 12px;"><strong>#@item.ReaderId</strong></td>
+                            <td style="padding: 12px; font-weight: 500;">@item.FullName</td>
+                            <td style="padding: 12px;">@(item.Email ?? "N/A")</td>
+                            <td style="padding: 12px;">@(item.Phone ?? "N/A")</td>
+                            <td style="padding: 12px; color: #dc3545; font-weight: bold;">@item.TotalFines.ToString("N0") VND</td>
+                            <td style="padding: 12px; text-align: center;">
+                                <a href="@Url.Action("ReaderProfile", "Librarian", new { id = item.ReaderId })"
+                                   class="btn btn-sm btn-info"
+                                   style="background-color: #17a2b8; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 13px;">
+                                    View History & Profile
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

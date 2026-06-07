@@ -139,6 +139,7 @@
       <DependentUpon>Library.dbml</DependentUpon>
     </Compile>
     <Compile Include="Models\ReaderFinesViewModel.cs" />
+    <Compile Include="Models\ReaderProfileViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -234,6 +235,9 @@
     <Content Include="Views\Admin\_BookFormFields.cshtml" />
     <Content Include="Views\Reader\BorrowForm.cshtml" />
     <Content Include="Views\Reader\MyFines.cshtml" />
+    <Content Include="Views\Librarian\Readers.cshtml" />
+    <Content Include="Views\Librarian\ReaderProfile.cshtml" />
+    <Content Include="Views\Librarian\Setting.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
