@@ -26,12 +26,12 @@
             </div>
             <div class="form-group">
                 @Html.LabelFor(m => m.Password)
-                @Html.PasswordFor(m => m.Password, new { @class = "form-input", placeholder = "••••••••" })
+                @Html.PasswordFor(m => m.Password, new { @class = "form-input", placeholder = "••••••••", autocomplete = "off" })
                 @Html.ValidationMessageFor(m => m.Password, "", new { @class = "field-error" })
             </div>
             <div class="form-check">
                 @Html.CheckBoxFor(m => m.RememberMe)
-                <label>Remember me</label>
+                @Html.LabelFor(m => m.RememberMe)
             </div>
             <button type="submit" class="btn-primary">Sign In</button>
         }

@@ -4,9 +4,30 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="home-layout">
-    <div class="home-main">
-        <!-- NEW BOOKS -->
+<div class="home-layout" style="display: flex; align-items: flex-start; gap: 24px; width: 100%; position: relative;">
+    <div class="home-main" style="flex: 1; min-width: 0;">
+        <div class="home-banner">
+            @if (Request.IsAuthenticated)
+            {
+                <div class="banner-greeting">
+                    <h1>Hello, @(Session["FullName"] != null ? Session["FullName"].ToString().Split(' ')[0] : "Reader") 👋</h1>
+                    <p>What are you looking for today?</p>
+                </div>
+            }
+            else
+            {
+                <div class="banner-greeting">
+                    <h1>Welcome to <span style="color:var(--blue)">My Library</span></h1>
+                    <p>Discover, borrow and enjoy thousands of books — all in one place.</p>
+                    <div style="display:flex;gap:10px;margin-top:12px">
+                        <a href="@Url.Action("Register","Account")" class="btn-primary" style="width:auto;padding:8px 20px;text-decoration:none;display:inline-block">Get Started</a>
+                        <a href="@Url.Action("Login","Account")" class="btn-outline-sm" style="padding:8px 20px">Log in</a>
+                    </div>
+                </div>
+            }
+        </div>
+
+
         <section class="book-section">
             <div class="section-header">
                 <h2>New Books</h2>
@@ -16,7 +37,7 @@
                 @foreach (var book in Model.NewBooks.Take(4))
                 {
                     <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
-                         onclick="selectBook(@book.BookId, 'home')">
+                         onclick="selectBook(@book.BookId, this)" style="cursor:pointer;">
                         <div class="book-cover">
                             @if (!string.IsNullOrEmpty(book.CoverUrl))
                             {<img src="@book.CoverUrl" alt="@book.Title" /> }
@@ -32,7 +53,39 @@
             </div>
         </section>
 
-        <!-- CATEGORY SECTION -->
+        @if (Model.DynamicBooks != null && Model.DynamicBooks.Count > 0)
+        {
+            <section class="book-section">
+                <div class="section-header">
+                    <h2>@(string.IsNullOrEmpty(Model.DynamicSectionTitle) ? "Recommended For You" : Model.DynamicSectionTitle)</h2>
+                </div>
+                <div class="book-grid">
+                    @foreach (var book in Model.DynamicBooks)
+                    {
+                        <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
+                             onclick="selectBook(@book.BookId, this)" style="cursor:pointer;">
+                            <div class="book-cover">
+                                @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                {<img src="@book.CoverUrl" alt="@book.Title" /> }
+                                else
+                                { <div class="cover-placeholder">📖</div>}
+                            </div>
+                            <div class="book-meta">
+                                <div class="card-stars" style="color: #ffb400; font-size: 0.85rem; margin-bottom: 4px;">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span>@(i <= (int)Math.Round((double)book.AverageRating) ? "★" : "☆")</span>
+                                    }
+                                </div>
+                                <span class="book-title">@book.Title</span>
+                                <span class="book-author">@book.AuthorName</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+
         <section class="book-section">
             <div class="section-header">
                 <h2>Category</h2>
@@ -52,7 +105,7 @@
                 @foreach (var book in Model.CategoryBooks.Take(4))
                 {
                     <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
-                         onclick="selectBook(@book.BookId, 'home')">
+                         onclick="selectBook(@book.BookId, this)" style="cursor:pointer;">
                         <div class="book-cover">
                             @if (!string.IsNullOrEmpty(book.CoverUrl))
                             {<img src="@book.CoverUrl" alt="@book.Title" /> }
@@ -69,7 +122,89 @@
         </section>
     </div>
 
-    <!-- BOOK DETAIL PANEL -->
+
     <aside class="book-detail-panel" id="detail-panel" style="display:none">
     </aside>
 </div>
+
+@section Scripts {
+    <script>
+        function selectBook(bookId, element) {
+            var panel = document.getElementById('detail-panel');
+            if (!panel) return;
+
+            // Toggle off if same book clicked
+            if (panel.dataset.bookId == bookId && panel.style.display !== 'none') {
+                panel.style.display = 'none';
+                panel.dataset.bookId = '';
+                document.querySelectorAll('.book-card').forEach(function (c) { c.classList.remove('selected'); });
+                return;
+            }
+
+            // Highlight selected card
+            document.querySelectorAll('.book-card').forEach(function (c) { c.classList.remove('selected'); });
+            if (element) element.classList.add('selected');
+
+            // Show loading
+            panel.style.display = 'flex';
+            panel.innerHTML = '<p style="color:#fff;opacity:.6;font-size:13px;margin:auto">Loading...</p>';
+
+            // Fetch detail
+            fetch('/Guest/BookDetail?id=' + bookId)
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Not found');
+                    return r.text();
+                })
+                .then(function (html) {
+                    panel.innerHTML = html;
+                    panel.dataset.bookId = bookId;
+                    panel.scrollTop = 0;
+                    // Load comments
+                    loadBookComments(bookId);
+                })
+                .catch(function () {
+                    panel.style.display = 'none';
+                });
+        }
+
+        function loadBookComments(bookId) {
+            var container = document.getElementById('reader-comments-list');
+            if (!container) return;
+
+            fetch('/Guest/GetBookComments?id=' + bookId)
+                .then(function (r) { return r.json(); })
+                .then(function (comments) {
+                    if (!comments || comments.length === 0) {
+                        container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">No reviews yet.</p>';
+                        return;
+                    }
+                    container.innerHTML = '';
+                    comments.forEach(function (c) {
+                        container.insertAdjacentHTML('beforeend',
+                            '<div style="border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:10px;margin-bottom:10px">' +
+                            '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+                            '<strong style="font-size:0.85rem;color:#fff">' + (c.UserName || 'Anonymous') + '</strong>' +
+                            '<span style="color:#fbbf24;font-size:0.75rem">★ ' + (c.Rating || 5) + '/5</span>' +
+                            '</div>' +
+                            '<p style="margin:0;font-size:0.85rem;opacity:0.8;line-height:1.4">' + (c.Text || '') + '</p>' +
+                            '</div>'
+                        );
+                    });
+                })
+                .catch(function () {
+                    if (container) container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">Unable to load reviews.</p>';
+                });
+        }
+
+        // Close panel on outside click
+        document.addEventListener('click', function (e) {
+            var panel = document.getElementById('detail-panel');
+            if (!panel || panel.style.display === 'none') return;
+            if (!e.target.closest('#detail-panel') && !e.target.closest('.book-card')) {
+                panel.style.display = 'none';
+                panel.dataset.bookId = '';
+                document.querySelectorAll('.book-card').forEach(function (c) { c.classList.remove('selected'); });
+            }
+        });
+    </script>
+}

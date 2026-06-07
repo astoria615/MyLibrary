@@ -13,5 +13,8 @@ namespace MyLibrary.Models.ViewModels
         public int? CategoryId { get; set; }
         public string CategoryName { get; set; }
         public BookDetailViewModel SelectedBook { get; set; }
+        public int CurrentPage { get; set; }
+        public int TotalPages { get; set; }
+        public int TotalItems { get; set; }
     }
 }

@@ -208,6 +208,9 @@ namespace MyLibrary.Controllers
         {
             if (!IsAdmin()) return RedirectToLogin();
 
+            ViewBag.AuthorName = "";
+            ViewBag.CategoryName = "";
+            ViewBag.PublisherName = "";
             PopulateBookDropdowns();
             return View(new AdminBookEditViewModel());
         }
@@ -280,9 +283,7 @@ namespace MyLibrary.Controllers
         public ActionResult EditBook(int id)
         {
             if (!IsAdmin()) return RedirectToLogin();
-
             var book = db.Books.FirstOrDefault(b => b.BookId == id);
-
             if (book == null)
                 return HttpNotFound();
 
@@ -308,6 +309,13 @@ namespace MyLibrary.Controllers
                 IsFeatured = book.IsFeatured,
                 CoverUrl = cover
             };
+
+            var author = book.AuthorId != null ? db.Authors.FirstOrDefault(a => a.AuthorId == book.AuthorId) : null;
+            var category = book.CategoryId != null ? db.Categories.FirstOrDefault(c => c.CategoryId == book.CategoryId) : null;
+            var publisher = book.PublisherId != null ? db.Publishers.FirstOrDefault(p => p.PublisherId == book.PublisherId) : null;
+            ViewBag.AuthorName = author != null ? author.FullName : "";
+            ViewBag.CategoryName = category != null ? category.CategoryName : "";
+            ViewBag.PublisherName = publisher != null ? publisher.PublisherName : "";
 
             PopulateBookDropdowns();
             return View(vm);
@@ -809,25 +817,53 @@ namespace MyLibrary.Controllers
         // ══════════════════════════════════════
         public ActionResult Reviews()
         {
-            if (!IsAdmin()) return RedirectToLogin();
+            if (!IsAdmin()) return RedirectToAction("Login", "Account");
 
-            var reviews = (from r in db.Reviews
-                           where r.IsVisible
-                           orderby r.ReviewDate descending
-                           let reader = db.Readers.FirstOrDefault(rd => rd.ReaderId == r.ReaderId)
-                           let user = reader != null ? db.UserAccounts.FirstOrDefault(u => u.UserId == reader.UserId) : null
-                           let book = db.Books.FirstOrDefault(b => b.BookId == r.BookId)
-                           select new AdminReviewItem
-                           {
-                               ReviewId = r.ReviewId,
-                               BookTitle = book != null ? book.Title : "Unknown",
-                               ReaderName = user != null ? user.FullName : "Unknown",
-                               Rating = r.Rating,
-                               Comment = r.Comment,
-                               ReviewDate = r.ReviewDate
-                           }).ToList();
+            // Step 1: fetch flat data with joins only
+            var baseReviews = (from r in db.Reviews
+                               where r.IsVisible
+                               join rd in db.Readers on r.ReaderId equals rd.ReaderId into jr
+                               from rd in jr.DefaultIfEmpty()
+                               join u in db.UserAccounts on rd.UserId equals u.UserId into ju
+                               from u in ju.DefaultIfEmpty()
+                               join b in db.Books on r.BookId equals b.BookId into jb
+                               from b in jb.DefaultIfEmpty()
+                               orderby r.ReviewDate descending
+                               select new
+                               {
+                                   r.ReviewId,
+                                   r.Rating,
+                                   r.Comment,
+                                   r.ReviewDate,
+                                   BookTitle = b != null ? b.Title : "Unknown",
+                                   ReaderName = u != null ? u.FullName : "Unknown"
+                               }).ToList();
 
-            return View(reviews);
+            // Step 2: map in memory
+            var reviews = baseReviews.Select(r => new AdminReviewItem
+            {
+                ReviewId = r.ReviewId,
+                BookTitle = r.BookTitle,
+                ReaderName = r.ReaderName,
+                Rating = r.Rating,
+                Comment = r.Comment,
+                ReviewDate = r.ReviewDate
+            }).ToList();
+
+            // Step 3: build stats
+            var stats = new ReviewStatsViewModel
+            {
+                TotalReviews = reviews.Count,
+                AverageRating = reviews.Any() ? Math.Round(reviews.Average(r => r.Rating), 2) : 0,
+                Star5 = reviews.Count(r => r.Rating == 5),
+                Star4 = reviews.Count(r => r.Rating == 4),
+                Star3 = reviews.Count(r => r.Rating == 3),
+                Star2 = reviews.Count(r => r.Rating == 2),
+                Star1 = reviews.Count(r => r.Rating == 1),
+                Reviews = reviews
+            };
+
+            return View(stats);
         }
 
         [HttpPost]
@@ -854,6 +890,96 @@ namespace MyLibrary.Controllers
                 db.Dispose();
 
             base.Dispose(disposing);
+        }
+        // ── SEARCH AUTHORS ──
+        public ActionResult SearchAuthors(string q)
+        {
+            var results = db.Authors
+                .Where(a => a.IsActive && a.FullName.Contains(q))
+                .ToList()
+                .Select(a => new { AuthorId = a.AuthorId, FullName = a.FullName })
+                .Take(8).ToList();
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        public ActionResult SearchCategories(string q)
+        {
+            var results = db.Categories
+                .Where(c => c.IsActive && c.CategoryName.Contains(q))
+                .ToList()
+                .Select(c => new { CategoryId = c.CategoryId, CategoryName = c.CategoryName })
+                .Take(8).ToList();
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        public ActionResult SearchPublishers(string q)
+        {
+            var results = db.Publishers
+                .Where(p => p.IsActive && p.PublisherName.Contains(q))
+                .ToList()
+                .Select(p => new { PublisherId = p.PublisherId, PublisherName = p.PublisherName })
+                .Take(8).ToList();
+            return Json(results, JsonRequestBehavior.AllowGet);
+        }
+
+        // ── CREATE NEW AUTHOR IF NOT EXISTS ──
+        [HttpPost]
+        public ActionResult GetOrCreateAuthor(string name)
+        {
+            if (!IsAdmin()) return Json(new { success = false });
+            var existing = db.Authors.FirstOrDefault(a => a.FullName.ToLower() == name.ToLower());
+            if (existing != null)
+                return Json(new { success = true, id = existing.AuthorId, name = existing.FullName });
+
+            var newAuthor = new Author
+            {
+                FullName = name,
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            };
+            db.Authors.InsertOnSubmit(newAuthor);
+            db.SubmitChanges();
+            return Json(new { success = true, id = newAuthor.AuthorId, name = newAuthor.FullName });
+        }
+
+        // ── CREATE NEW CATEGORY IF NOT EXISTS ──
+        [HttpPost]
+        public ActionResult GetOrCreateCategory(string name)
+        {
+            if (!IsAdmin()) return Json(new { success = false });
+            var existing = db.Categories.FirstOrDefault(c => c.CategoryName.ToLower() == name.ToLower());
+            if (existing != null)
+                return Json(new { success = true, id = existing.CategoryId, name = existing.CategoryName });
+
+            var newCat = new Category
+            {
+                CategoryName = name,
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            };
+            db.Categories.InsertOnSubmit(newCat);
+            db.SubmitChanges();
+            return Json(new { success = true, id = newCat.CategoryId, name = newCat.CategoryName });
+        }
+
+        // ── CREATE NEW PUBLISHER IF NOT EXISTS ──
+        [HttpPost]
+        public ActionResult GetOrCreatePublisher(string name)
+        {
+            if (!IsAdmin()) return Json(new { success = false });
+            var existing = db.Publishers.FirstOrDefault(p => p.PublisherName.ToLower() == name.ToLower());
+            if (existing != null)
+                return Json(new { success = true, id = existing.PublisherId, name = existing.PublisherName });
+
+            var newPub = new Publisher
+            {
+                PublisherName = name,
+                IsActive = true,
+                CreatedAt = DateTime.Now
+            };
+            db.Publishers.InsertOnSubmit(newPub);
+            db.SubmitChanges();
+            return Json(new { success = true, id = newPub.PublisherId, name = newPub.PublisherName });
         }
     }
 }

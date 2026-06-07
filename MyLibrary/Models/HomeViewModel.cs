@@ -9,6 +9,10 @@ namespace MyLibrary.Models.ViewModels
         public List<CategoryItem> Categories { get; set; }
         public int SelectedCategoryId { get; set; }
         public BookDetailViewModel SelectedBook { get; set; }
+
+        // Add these two properties:
+        public List<BookCardViewModel> DynamicBooks { get; set; }
+        public string DynamicSectionTitle { get; set; }
     }
 
     public class BookCardViewModel

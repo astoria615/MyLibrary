@@ -2,37 +2,80 @@
 
 <div class="detail-cover-img">
     @if (!string.IsNullOrEmpty(Model.CoverUrl))
-    {<img src="@Model.CoverUrl" alt="@Model.Title" /> }
+    {
+        <img src="@Model.CoverUrl" alt="@Model.Title" />
+    }
     else
-    { <div class="cover-placeholder large">📖</div>}
+    {
+        <div class="cover-placeholder large">📖</div>
+    }
 </div>
-<div class="detail-info">
-    <h3 class="detail-title">@Model.Title</h3>
-    <p class="detail-author">@Model.AuthorName</p>
-    <div class="detail-stars">
+
+<div class="detail-info" style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
+    <h3 class="detail-title" style="margin: 0; font-size: 1.5rem; line-height: 1.3; font-weight: 700;">@Model.Title</h3>
+    <p class="detail-author" style="margin: 0; opacity: 0.7; font-size: 1rem; font-style: italic;">@Model.AuthorName</p>
+
+    <div class="detail-stars" style="display: flex; align-items: center; gap: 4px;">
         @for (int i = 1; i <= 5; i++)
         {
-            <span class="star @(i <= (int)Math.Round((double)Model.AverageRating) ? "filled" : "")">&#9733;</span>
+            <span class="star @(i <= (int)Math.Round((double)Model.AverageRating) ? "filled" : "")" style="color: @(i <= (int)Math.Round((double)Model.AverageRating) ? "#ffb400" : "rgba(255,255,255,0.2)"); font-size: 1.2rem;">&#9733;</span>
         }
-        <span class="detail-reviews">(@Model.TotalReviews reviews)</span>
+        <span class="detail-reviews" style="margin-left: 8px; opacity: 0.5; font-size: 0.9rem;"> (@Model.TotalReviews reviews)</span>
     </div>
-    <p class="detail-desc">@Model.Description</p>
-    <div class="detail-meta-grid">
-        <span class="meta-label">ISBN</span><span>@(Model.ISBN ?? "—")</span>
-        <span class="meta-label">Category</span><span>@(Model.CategoryName ?? "—")</span>
-        <span class="meta-label">Language</span><span>@(Model.Language ?? "—")</span>
-        <span class="meta-label">Pages</span><span>@(Model.PageCount?.ToString() ?? "—")</span>
-        <span class="meta-label">Published</span><span>@(Model.PublishYear?.ToString() ?? "—")</span>
-        <span class="meta-label">Available</span><span>@Model.AvailableCopies copies</span>
+
+    <p class="detail-desc" style="margin: 0; line-height: 1.6; font-size: 0.95rem; opacity: 0.85;">@Model.Description</p>
+
+    <div class="detail-meta-grid" style="display: grid; grid-template-columns: auto 1fr; row-gap: 10px; column-gap: 16px; font-size: 0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; margin-top: 6px;">
+        <span class="meta-label" style="opacity: 0.5; font-weight: 500;">ISBN</span><span>@(Model.ISBN ?? "—")</span>
+        <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Category</span><span>@(Model.CategoryName ?? "—")</span>
+        <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Language</span><span>@(Model.Language ?? "—")</span>
+        <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Pages</span><span>@(Model.PageCount?.ToString() ?? "—")</span>
+        <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Published</span><span>@(Model.PublishYear?.ToString() ?? "—")</span>
+        <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Available</span>
+        <span>
+            @if (Model.AvailableCopies > 0)
+            {
+                <span class="status-badge available" style="color: #24b14d; font-weight: bold; background: rgba(36,177,77,0.15); padding: 2px 8px; border-radius: 4px;">
+                    @Model.AvailableCopies copies
+                </span>
+            }
+            else
+            {
+                <span class="status-badge unavailable" style="color: #e53e3e; font-weight: bold; background: rgba(229,62,62,0.15); padding: 2px 8px; border-radius: 4px;">
+                    Out of Stock
+                </span>
+            }
+        </span>
     </div>
-    @if (Request.IsAuthenticated)
-    {
-        <button class="borrow-btn" onclick="borrowBook(@Model.BookId)">Borrow now</button>
-    }
-    else
-    {
-        <a href="@Url.Action("Login","Account",new{returnUrl=Request.Url})" class="borrow-btn" style="text-align:center;display:block;text-decoration:none">
-            Log in to Borrow
-        </a>
-    }
+
+    <div style="margin-top: 4px; width: 100%;">
+        @if (Request.IsAuthenticated)
+        {
+            if (Model.AvailableCopies > 0)
+            {
+                <button class="borrow-btn" onclick="borrowBook(@Model.BookId)" style="width: 100%;">Borrow now</button>
+            }
+            else
+            {
+                <button class="borrow-btn" disabled style="width: 100%; background-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); cursor: not-allowed; border: 1px solid rgba(255,255,255,0.05);">
+                    Out of Stock
+                </button>
+            }
+        }
+        else
+        {
+            <a href="@Url.Action("Login","Account",new{returnUrl=Request.Url.PathAndQuery})" class="borrow-btn" style="text-align:center; display:block; text-decoration:none; width: 100%;">
+                Log in to Borrow
+            </a>
+        }
+    </div>
+
+    <div class="reader-comments-section" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; margin-top: 10px;">
+        <h4 style="margin: 0 0 12px 0; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+            💬 Reader Reviews
+        </h4>
+        <div id="reader-comments-list" style="display: flex; flex-direction: column; max-height: 250px; overflow-y: auto;">
+            <p style="opacity:0.5; font-size:0.85rem; margin:0;">Loading comments...</p>
+        </div>
+    </div>
 </div>

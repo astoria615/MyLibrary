@@ -227,4 +227,15 @@ namespace MyLibrary.Models.ViewModels
         public string Comment { get; set; }
         public DateTime ReviewDate { get; set; }
     }
+    public class ReviewStatsViewModel
+    {
+        public int TotalReviews { get; set; }
+        public double AverageRating { get; set; }
+        public int Star5 { get; set; }
+        public int Star4 { get; set; }
+        public int Star3 { get; set; }
+        public int Star2 { get; set; }
+        public int Star1 { get; set; }
+        public List<AdminReviewItem> Reviews { get; set; }
+    }
 }   

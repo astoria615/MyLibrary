@@ -228,6 +228,8 @@
     <Content Include="Views\Admin\Borrowings.cshtml" />
     <Content Include="Views\Admin\Fines.cshtml" />
     <Content Include="Views\Admin\Reviews.cshtml" />
+    <Content Include="Views\Admin\EditBook.cshtml" />
+    <Content Include="Views\Admin\_BookFormFields.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

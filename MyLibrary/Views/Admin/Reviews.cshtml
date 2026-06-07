@@ -1,39 +1,81 @@
-﻿@model IEnumerable<MyLibrary.Models.ViewModels.AdminReviewItem>
-@{ ViewBag.Title = "Reviews"; Layout = "~/Views/Shared/_AdminLayout.cshtml"; }
+﻿@model MyLibrary.Models.ViewModels.ReviewStatsViewModel
+@{
+    ViewBag.Title = "Reviews";
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
 
 <div class="lib-dashboard">
+
+    <!-- STATS -->
     <div class="lib-section">
-        <div class="admin-section-header">
-            <h2>Manage Reviews</h2>
-            <div class="text-muted" style="font-size:13px">@Model.Count() visible reviews</div>
-        </div>
-
-        <!-- STATS -->
-        <div class="stat-cards" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">
-            @for (int star = 5; star >= 1; star--)
-            {
-                int s = star;
-                int cnt = Model.Count(r => r.Rating == s);
-                <div class="stat-card">
-                    <span class="stat-card-num" style="font-size:20px">@("★".PadRight(s,'★').PadRight(5,'☆'))</span>
-                    <span class="stat-card-label">@cnt reviews</span>
+        <h2>Review Statistics</h2>
+        <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+            <div class="stat-box" style="text-align:center">
+                <span class="stat-num" style="font-size:36px;color:var(--blue)">@Model.AverageRating</span>
+                <span class="stat-label">Average Rating</span>
+                <div style="font-size:20px;color:#fbbf24;margin-top:4px">
+                    @for (int i = 1; i <= 5; i++)
+                    {<span>@(i <= Math.Round(Model.AverageRating) ? "★" : "☆")</span>}
                 </div>
-            }
-        </div>
-
-        <table class="book-list-table">
-            <thead><tr><th>Book</th><th>Reader</th><th>Rating</th><th>Comment</th><th>Date</th><th>Action</th></tr></thead>
-            <tbody>
-                @foreach (var r in Model)
+            </div>
+            <div style="flex:1;min-width:200px">
+                @foreach (var s in new[] {
+                    new { Stars = 5, Count = Model.Star5 },
+                    new { Stars = 4, Count = Model.Star4 },
+                    new { Stars = 3, Count = Model.Star3 },
+                    new { Stars = 2, Count = Model.Star2 },
+                    new { Stars = 1, Count = Model.Star1 }
+                })
                 {
-                    <tr>
-                        <td style="font-size:13px">@r.BookTitle</td>
+                    double pct = Model.TotalReviews > 0 ? (s.Count * 100.0 / Model.TotalReviews) : 0;
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+                        <span style="font-size:12px;color:#fbbf24;min-width:60px">
+                            @for (int i = 0; i < s.Stars; i++)
+                            {<text>★</text>}
+                        </span>
+                        <div style="flex:1;background:var(--border);border-radius:4px;height:8px">
+                            <div style="width:@(pct.ToString("F0"))%;background:#fbbf24;height:8px;border-radius:4px"></div>
+                        </div>
+                        <span style="font-size:12px;color:var(--text-muted);min-width:30px">@s.Count</span>
+                    </div>
+                }
+            </div>
+            <div class="stat-box" style="text-align:center">
+                <span class="stat-num">@Model.TotalReviews</span>
+                <span class="stat-label">Total Reviews</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- REVIEWS TABLE -->
+    <div class="lib-section">
+        <h2>All Reviews</h2>
+        <table class="book-list-table">
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th>Reader</th>
+                    <th>Rating</th>
+                    <th>Comment</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Reviews)
+                {
+                    <tr id="review-row-@r.ReviewId">
+                        <td style="font-size:13px;max-width:160px">@r.BookTitle</td>
                         <td>@r.ReaderName</td>
                         <td>
                             @for (int i = 1; i <= 5; i++)
-                            {<span style="color:@(i<=r.Rating?"#fbbf24":"var(--border)")">★</span>}
+                            {
+                                <span style="color:@(i <= r.Rating ? "#fbbf24" : "var(--border)")">★</span>
+                            }
                         </td>
-                        <td style="font-size:12px;max-width:200px">@(r.Comment ?? "—")</td>
+                        <td style="font-size:12px;max-width:220px;color:var(--text-muted)">
+                            @(string.IsNullOrEmpty(r.Comment) ? "—" : r.Comment)
+                        </td>
                         <td style="font-size:12px">@r.ReviewDate.ToString("MMM dd, yyyy")</td>
                         <td>
                             <button class="btn-reject" style="padding:4px 10px;font-size:12px"
@@ -43,6 +85,10 @@
                         </td>
                     </tr>
                 }
+                @if (!Model.Reviews.Any())
+                {
+                    <tr><td colspan="6" class="no-results">No reviews found.</td></tr>
+                }
             </tbody>
         </table>
     </div>
@@ -50,10 +96,20 @@
 
 @section Scripts {
     <script>
-function deleteReview(id) {
-    if (!confirm('Remove this review?')) return;
-    fetch('/Admin/DeleteReview', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'id='+id })
-    .then(r=>r.json()).then(d=>{ alert(d.message); if(d.success) location.reload(); });
-}
+        function deleteReview(id) {
+            if (!confirm('Remove this review? This cannot be undone.')) return;
+            fetch('/Admin/DeleteReview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'id=' + id
+            }).then(r => r.json()).then(d => {
+                if (d.success) {
+                    var row = document.getElementById('review-row-' + id);
+                    if (row) row.remove();
+                } else {
+                    alert('Failed to remove review.');
+                }
+            });
+        }
     </script>
 }

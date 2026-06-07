@@ -9,7 +9,6 @@
         <section class="book-section">
             <div class="section-header">
                 <h2>@Model.CategoryName</h2>
-                <!-- Sort dropdown -->
                 <div class="sort-wrap">
                     <button class="sort-btn" onclick="toggleSortMenu()" id="sort-btn">
                         &#9776; @GetSortLabel(Model.SortBy) <span class="sort-arrow">&#8593;</span>
@@ -17,35 +16,32 @@
                     <div class="sort-menu" id="sort-menu" style="display:none">
                         @foreach (var s in new[] { new { val = "title", lbl = "Title" }, new { val = "author", lbl = "Creator" }, new { val = "newest", lbl = "Added" }, new { val = "published", lbl = "Published" }, new { val = "rating", lbl = "Rating" } })
                         {
-                            <a href="@Url.Action("BookList","Guest", new{ categoryId=Model.CategoryId, q=Model.SearchQuery, sort=s.val, letter=Model.FilterLetter, view=Model.ViewMode })"
+                            <a href="@Url.Action("BookList","Guest", new{ categoryId=Model.CategoryId, q=Model.SearchQuery, sort=s.val, letter=Model.FilterLetter, view=Model.ViewMode, page=1 })"
                                class="sort-item @(Model.SortBy == s.val ? "active" : "")">@s.lbl</a>
                         }
                     </div>
                 </div>
-                <!-- View toggle -->
                 <div class="view-toggle">
-                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=Model.FilterLetter,view="grid"})"
+                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=Model.FilterLetter,view="grid", page=Model.CurrentPage})"
                        class="vt-btn @(Model.ViewMode=="grid"?"active":"")">Grid</a>
-                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=Model.FilterLetter,view="list"})"
+                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=Model.FilterLetter,view="list", page=Model.CurrentPage})"
                        class="vt-btn @(Model.ViewMode=="list"?"active":"")">List</a>
                 </div>
             </div>
 
-            <!-- A-Z Filter -->
             <div class="az-filter">
                 @{
                     var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
                 }
-                <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter="All",view=Model.ViewMode})"
+                <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter="All",view=Model.ViewMode, page=1})"
                    class="az-btn @(Model.FilterLetter=="All"?"active":"")">All</a>
                 @foreach (var lt in letters)
                 {
-                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=lt,view=Model.ViewMode})"
+                    <a href="@Url.Action("BookList","Guest",new{categoryId=Model.CategoryId,q=Model.SearchQuery,sort=Model.SortBy,letter=lt,view=Model.ViewMode, page=1})"
                        class="az-btn @(Model.FilterLetter==lt.ToString()?"active":"")">@lt</a>
                 }
             </div>
 
-            <!-- GRID VIEW -->
             @if (Model.ViewMode == "grid")
             {
                 <div class="book-grid">
@@ -73,7 +69,6 @@
             }
             else
             {
-                <!-- LIST VIEW -->
                 <table class="book-list-table">
                     <thead>
                         <tr><th>Title</th><th>Author</th><th>ISBN</th></tr>
@@ -95,10 +90,49 @@
                     </tbody>
                 </table>
             }
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin: 30px 0;">
+
+                    @if (Model.CurrentPage > 1)
+                    {
+                        <a href="@Url.Action("BookList", "Guest", new { categoryId = Model.CategoryId, q = Model.SearchQuery, sort = Model.SortBy, letter = Model.FilterLetter, view = Model.ViewMode, page = Model.CurrentPage - 1 })"
+                           class="az-btn" style="padding: 6px 12px;">&laquo; Prev</a>
+                    }
+                    else
+                    {
+                        <span class="az-btn" style="padding: 6px 12px; opacity: 0.4; cursor: not-allowed;">&laquo; Prev</span>
+                    }
+
+                    @for (int i = 1; i <= Model.TotalPages; i++)
+                    {
+                        if (i == Model.CurrentPage)
+                        {
+                            <span class="az-btn active" style="padding: 6px 12px; font-weight: bold;">@i</span>
+                        }
+                        else
+                        {
+                            <a href="@Url.Action("BookList", "Guest", new { categoryId = Model.CategoryId, q = Model.SearchQuery, sort = Model.SortBy, letter = Model.FilterLetter, view = Model.ViewMode, page = i })"
+                               class="az-btn" style="padding: 6px 12px;">@i</a>
+                        }
+                    }
+
+                    @if (Model.CurrentPage < Model.TotalPages)
+                    {
+                        <a href="@Url.Action("BookList", "Guest", new { categoryId = Model.CategoryId, q = Model.SearchQuery, sort = Model.SortBy, letter = Model.FilterLetter, view = Model.ViewMode, page = Model.CurrentPage + 1 })"
+                           class="az-btn" style="padding: 6px 12px;">Next &raquo;</a>
+                    }
+                    else
+                    {
+                        <span class="az-btn" style="padding: 6px 12px; opacity: 0.4; cursor: not-allowed;">Next &raquo;</span>
+                    }
+                </div>
+            }
+
         </section>
     </div>
 
-    <!-- BOOK DETAIL PANEL -->
     <aside class="book-detail-panel" id="detail-panel" style="display:@(Model.SelectedBook != null ? "flex" : "none")">
         @if (Model.SelectedBook != null)
         {
@@ -109,8 +143,8 @@
 
 @section Scripts {
     <script>
-    // pass ISBN to the list view (LINQ to SQL needs a join to bring ISBN into BookCard)
-    // Already handled via detail panel AJAX
+        // pass ISBN to the list view (LINQ to SQL needs a join to bring ISBN into BookCard)
+        // Already handled via detail panel AJAX
     </script>
 }
 
