@@ -124,14 +124,23 @@ namespace MyLibrary.Controllers
 
             string hash = HashPassword(model.Password);
 
+            // 1. FIXED: Remove u.IsActive from this matching filter 
+            // This allows you to find the user even if they are deactivated
             var user = db.UserAccounts.FirstOrDefault(u =>
                 u.Email == model.Email &&
-                u.PasswordHash == hash &&
-                u.IsActive);
+                u.PasswordHash == hash);
 
+            // 2. This now only catches genuinely wrong emails or wrong passwords
             if (user == null)
             {
                 ModelState.AddModelError("", "Invalid email or password.");
+                return View(model);
+            }
+
+            // 3. This block will now successfully catch deactivated accounts!
+            if (!user.IsActive)
+            {
+                ModelState.AddModelError("", "Your account has been deactivated. Please contact the administrator for more information.");
                 return View(model);
             }
 
@@ -183,7 +192,6 @@ namespace MyLibrary.Controllers
 
             return RedirectToAction("Index", "Guest");
         }
-
         // ── REGISTER GET ──
         public ActionResult Register()
         {
@@ -373,7 +381,15 @@ My Library System Administration";
 
             return RedirectToAction("VerifyResetCode");
         }
+        [HttpGet]
+        public ActionResult Settings()
+        {
+            // Retrieve currently authenticated user context role
+            string currentRole = Session["Role"] as string ?? "Guest";
 
+            ViewBag.UserRole = currentRole;
+            return View();
+        }
         // ── STAGE 3: GET/POST - Verify Code ──
         public ActionResult VerifyResetCode() { return View(); }
 

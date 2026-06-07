@@ -1,10 +1,22 @@
 ﻿@model MyLibrary.Models.ViewModels.ProfileViewModel
 @{
     ViewBag.Title = "My Profile";
-    bool isLibrarian = Model.Role == "Librarian" || Model.Role == "Admin";
-    Layout = isLibrarian
-        ? "~/Views/Shared/_LibrarianLayout.cshtml"
-        : "~/Views/Shared/_Layout.cshtml";
+
+    // Explicit layout assignment based on user role strings
+    if (Model.Role == "Admin")
+    {
+        Layout = "~/Views/Shared/_AdminLayout.cshtml";
+    }
+    else if (Model.Role == "Librarian")
+    {
+        Layout = "~/Views/Shared/_LibrarianLayout.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml"; // For Readers / Guests
+    }
+
+    bool isLibrarianOrAdmin = Model.Role == "Librarian" || Model.Role == "Admin";
 }
 
 @if (!Model.IsActive)
@@ -16,7 +28,6 @@
 }
 
 <div class="profile-page">
-    <!-- HEADER -->
     <div class="profile-header">
         <div class="profile-avatar-wrap">
             <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "/Content/images/default-avatar.png" : Model.AvatarUrl)"
@@ -25,9 +36,9 @@
         <div>
             <h2>@Model.FullName</h2>
             <p class="text-muted">@Model.Email</p>
-            @if (isLibrarian)
+            @if (isLibrarianOrAdmin)
             {
-                <p class="text-muted">Librarian Code: <strong>@(Model.LibrarianCode ?? "—")</strong></p>
+                <p class="text-muted">Staff Code: <strong>@(Model.LibrarianCode ?? "—")</strong></p>
                 <p class="text-muted">Department: <strong>@(Model.Department ?? "—")</strong></p>
             }
             else
@@ -36,7 +47,7 @@
             }
         </div>
         <div class="profile-stats">
-            @if (isLibrarian)
+            @if (isLibrarianOrAdmin)
             {
                 <div class="stat-box">
                     <span class="stat-num" style="color:@(Model.IsActive ? "#3b6d11" : "#a32d2d")">
@@ -101,7 +112,7 @@
                     <label>Address</label>
                     @Html.TextBoxFor(m => m.Address, new { @class = "form-input" })
                 </div>
-                @if (!isLibrarian)
+                @if (!isLibrarianOrAdmin)
                 {
                     <div class="form-row">
                         <div class="form-group">

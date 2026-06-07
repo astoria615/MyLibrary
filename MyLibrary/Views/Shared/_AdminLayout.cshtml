@@ -4,6 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewBag.Title – Admin</title>
+    <script>
+        (function () {
+            var dark = localStorage.getItem('darkMode') === 'true';
+            var root = document.documentElement;
+            if (dark) {
+                root.classList.add('dark');
+                root.style.backgroundColor = '#1a1a18';
+                root.style.color = '#e8e6e0';
+            } else {
+                root.style.backgroundColor = '#f4f4f2';
+                root.style.color = '#1a1a18';
+            }
+        })();
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/Content/library.css?v=7" />
 </head>
@@ -23,6 +37,9 @@
             </ul>
             <div class="sidebar-divider"></div>
             <ul class="sidebar-nav sidebar-nav-bottom">
+                <li>
+                    @Html.ActionLink("Settings", "Settings", "Account")
+                </li>
                 <li>@Html.ActionLink("Logout", "Logout", "Account")</li>
             </ul>
         </nav>
