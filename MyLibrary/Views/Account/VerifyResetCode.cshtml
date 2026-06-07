@@ -1,0 +1,30 @@
+﻿@{
+    ViewBag.Title = "Verify Reset Code";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h2>Enter Reset Code</h2>
+        <p class="auth-sub">Check your email for the 4-digit code</p>
+
+        @using (Html.BeginForm("VerifyResetCode", "Account", FormMethod.Post, new { @class = "auth-form" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "alert-error" })
+
+            <div class="form-group">
+                <label>4-Digit Code</label>
+                <input type="text" name="inputCode" class="form-input"
+                       placeholder="1234" maxlength="4" required
+                       style="letter-spacing:10px;font-size:22px;text-align:center" />
+            </div>
+
+            <button type="submit" class="btn-primary">Verify Code</button>
+        }
+
+        <p class="auth-switch">
+            <a href="@Url.Action("ForgotPassword","Account")">← Resend code</a>
+        </p>
+    </div>
+</div>

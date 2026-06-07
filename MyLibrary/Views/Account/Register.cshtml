@@ -1,138 +1,118 @@
 ﻿@model MyLibrary.Models.ViewModels.RegisterViewModel
 @{
     ViewBag.Title = "Create Account";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="register-container" style="max-width: 450px; margin: 40px auto; padding: 20px;">
-    <h2>Create Account</h2>
-    <p class="subtitle">Join My Library today</p>
+<div class="auth-page">
+    <div class="auth-card">
+        <h2>Create Account</h2>
+        <p class="auth-sub">Join My Library today</p>
 
-    @using (Html.BeginForm("Register", "Account", FormMethod.Post, new { id = "registrationForm" }))
-    {
-        @Html.AntiForgeryToken()
-        @Html.ValidationSummary(true, "", new { @class = "text-danger", style = "color:#dc3545;" })
+        @using (Html.BeginForm("Register", "Account", FormMethod.Post, new { id = "registrationForm", @class = "auth-form" }))
+        {
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(true, "", new { @class = "alert-error" })
 
-        <!-- ── STEP 1 FIELDS ── -->
-        <div id="registration-fields-step">
-            <div class="form-group mb-3">
-                <label>Full Name</label>
-                <input type="text" id="FullName" name="FullName" class="form-control" placeholder="John Doe" required />
-            </div>
-
-            <div class="form-group mb-3">
-                <label>Email</label>
-                <input type="email" id="Email" name="Email" class="form-control" placeholder="your@email.com" required />
-            </div>
-
-            <div class="form-group mb-3">
-                <label>Phone (optional)</label>
-                <input type="text" id="Phone" name="Phone" class="form-control" placeholder="0912345678" />
-            </div>
-
-            <div class="form-group mb-3">
-                <label>Password</label>
-                <input type="password" id="Password" name="Password" class="form-control" placeholder="Min. 6 characters" required />
-            </div>
-
-            <div class="form-group mb-4">
-                <label>Confirm Password</label>
-                <input type="password" id="ConfirmPassword" name="ConfirmPassword" class="form-control" placeholder="Repeat password" required />
-            </div>
-
-            <button type="button" id="btnRequestCode" class="btn btn-primary w-100" style="width:100%; padding:12px; font-weight:600;">
-                Create Account
-            </button>
-        </div>
-
-        <!-- ── STEP 2 FIELDS: HIDDEN BY DEFAULT ── -->
-        <div id="verification-code-step" style="display: none; text-align: center; margin-top: 15px;">
-            <div style="background-color: rgba(0,123,255,0.1); border-radius: 6px; padding: 15px; margin-bottom: 20px;">
-                <p style="margin: 0 0 10px 0; font-size: 14px;">We've sent a 4-digit verification code to your email address.</p>
-
+            <!-- STEP 1 -->
+            <div id="step-register">
                 <div class="form-group">
-                    <label style="font-weight: bold; display: block; margin-bottom: 8px;">Enter 4-Digit Security Code</label>
-                    <input type="text" id="inputCode" name="inputCode" class="form-control text-center"
-                           placeholder="0000" maxlength="4" autocomplete="off"
-                           style="font-size: 24px; letter-spacing: 8px; text-align: center; max-width: 180px; margin: 0 auto;" />
+                    <label>Full Name</label>
+                    <input type="text" id="FullName" name="FullName" class="form-input" placeholder="John Doe" required />
                 </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="Email" name="Email" class="form-input" placeholder="your@email.com" required />
+                </div>
+                <div class="form-group">
+                    <label>Phone (optional)</label>
+                    <input type="text" id="Phone" name="Phone" class="form-input" placeholder="0912345678" />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="Password" name="Password" class="form-input" placeholder="Min. 6 characters" required />
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="ConfirmPassword" name="ConfirmPassword" class="form-input" placeholder="Repeat password" required />
+                </div>
+                <button type="button" id="btnRequestCode" class="btn-primary">
+                    Send Verification Code
+                </button>
             </div>
 
-            <button type="submit" class="btn btn-success w-100" style="width:100%; padding:12px; font-weight:600; background-color: #28a745; border: none; color: white;">
-                Verify & Complete Registration
-            </button>
+            <!-- STEP 2 -->
+            <div id="step-verify" style="display:none">
+                <div class="alert-success" style="margin-bottom:16px">
+                    ✓ Verification code sent to your email.
+                </div>
+                <div class="form-group">
+                    <label>4-Digit Verification Code</label>
+                    <input type="text" id="inputCode" name="inputCode" class="form-input"
+                           placeholder="0000" maxlength="4" autocomplete="off"
+                           style="letter-spacing:10px;font-size:22px;text-align:center" />
+                </div>
+                <button type="submit" class="btn-primary">Verify &amp; Create Account</button>
+                <button type="button" id="btnBack"
+                        style="width:100%;margin-top:8px;padding:10px;background:none;
+                               border:1px solid var(--border);border-radius:8px;
+                               color:var(--text-muted);cursor:pointer;font-size:13px">
+                    ← Change Details
+                </button>
+            </div>
+        }
 
-            <a href="javascript:void(0)" id="btnBackToReg" style="display: block; margin-top: 15px; font-size: 13px; color: #6c757d; text-decoration: none;">
-                ← Change Registration Details
-            </a>
-        </div>
-    }
-
-    <p class="footer-link" style="text-align: center; margin-top: 20px; font-size: 14px;">
-        Already have an account? <a href="@Url.Action("Login", "Account")">Sign in</a>
-    </p>
+        <p class="auth-switch">
+            Already have an account? <a href="@Url.Action("Login","Account")">Sign in</a>
+        </p>
+    </div>
 </div>
 
 @section Scripts {
-    <script type="text/javascript">
-        document.addEventListener("DOMContentLoaded", function () {
-            const btnRequestCode = document.getElementById("btnRequestCode");
-            const stepRegistration = document.getElementById("registration-fields-step");
-            const stepVerification = document.getElementById("verification-code-step");
-            const btnBackToReg = document.getElementById("btnBackToReg");
+    <script>
+document.getElementById('btnRequestCode').addEventListener('click', function() {
+    var email = document.getElementById('Email').value;
+    var name = document.getElementById('FullName').value;
+    var pass = document.getElementById('Password').value;
+    var confirm = document.getElementById('ConfirmPassword').value;
 
-            // Handle clicking "Create Account" -> Fires Email via AJAX
-            btnRequestCode.addEventListener("click", function () {
-                const emailVal = document.getElementById("Email").value;
-                const nameVal = document.getElementById("FullName").value;
-                const passVal = document.getElementById("Password").value;
-                const confirmPassVal = document.getElementById("ConfirmPassword").value;
+    if (!email || !name || !pass) { alert('Please fill in all required fields.'); return; }
+    if (pass !== confirm) { alert('Passwords do not match.'); return; }
+    if (pass.length < 6) { alert('Password must be at least 6 characters.'); return; }
 
-                // Client-side quick checks
-                if (!emailVal || !nameVal || !passVal) {
-                    alert("Please fill in all mandatory fields safely.");
-                    return;
-                }
-                if (passVal !== confirmPassVal) {
-                    alert("Passwords do not match.");
-                    return;
-                }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
 
-                btnRequestCode.innerText = "Sending Code...";
-                btnRequestCode.disabled = true;
+    fetch('@Url.Action("SendVerificationCode","Account")', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ email: email, fullName: name })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            document.getElementById('step-register').style.display = 'none';
+            document.getElementById('step-verify').style.display = 'block';
+        } else {
+            alert(data.message);
+            btn.disabled = false;
+            btn.textContent = 'Send Verification Code';
+        }
+    })
+    .catch(function() {
+        alert('Error sending code. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Send Verification Code';
+    });
+});
 
-                // Send data using built-in fetch API
-                fetch('@Url.Action("SendVerificationCode", "Account")', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({ email: emailVal, fullName: nameVal })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Toggle panels smoothly
-                        stepRegistration.style.display = "none";
-                        stepVerification.style.display = "block";
-                    } else {
-                        alert(data.message);
-                        btnRequestCode.innerText = "Create Account";
-                        btnRequestCode.disabled = false;
-                    }
-                })
-                .catch(error => {
-                    console.error("Error:", error);
-                    alert("An operational error occurred while verifying details.");
-                    btnRequestCode.innerText = "Create Account";
-                    btnRequestCode.disabled = false;
-                });
-            });
-
-            // Let user hit back button if they misspelled their email
-            btnBackToReg.addEventListener("click", function() {
-                stepVerification.style.display = "none";
-                stepRegistration.style.display = "block";
-                btnRequestCode.innerText = "Create Account";
-                btnRequestCode.disabled = false;
-            });
-        });
+document.getElementById('btnBack').addEventListener('click', function() {
+    document.getElementById('step-verify').style.display = 'none';
+    document.getElementById('step-register').style.display = 'block';
+    var btn = document.getElementById('btnRequestCode');
+    btn.disabled = false;
+    btn.textContent = 'Send Verification Code';
+});
     </script>
 }

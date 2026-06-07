@@ -149,14 +149,35 @@ namespace MyLibrary.Controllers
             db.SubmitChanges();
             return Json(new { success = true, message = "Request sent for " + addedTitles.Count + " book(s). Due in 14 days." });
         }
-        // ── 4. LIVE RETURN SYSTEM INTERACTION ──
+        // ── 4. LIVE RETURN SYSTEM INTERACTION WITH REVIEWS ──
         [HttpPost]
-        public ActionResult ReturnBook(int borrowingId, int bookId)
+        public ActionResult ReturnBook(int borrowingId, int bookId, int? rating, string comment)
         {
             var detail = db.BorrowingDetails.FirstOrDefault(d => d.BorrowingId == borrowingId && d.BookId == bookId);
             if (detail == null) return Json(new { success = false, message = "Borrowing record entry not found." });
             if (detail.ReturnedAt != null) return Json(new { success = false, message = "This book has already been marked returned." });
 
+            int userId = int.Parse(User.Identity.Name);
+            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+            if (reader == null) return Json(new { success = false, message = "Reader profile context missing." });
+
+            // 1. Process and save review parameters into the Database if provided
+            if (rating.HasValue && !string.IsNullOrWhiteSpace(comment))
+            {
+                var bookReview = new Review
+                {
+                    BookId = bookId,
+                    ReaderId = reader.ReaderId,
+                    Rating = rating.Value,
+                    Comment = comment.Trim(),
+                    ReviewDate = DateTime.Now,
+                    IsVisible = true
+                };
+
+                db.Reviews.InsertOnSubmit(bookReview);
+            }
+
+            // 2. Complete your original return updates sequence
             detail.ReturnedAt = DateTime.Now;
             db.SubmitChanges();
 
@@ -175,7 +196,7 @@ namespace MyLibrary.Controllers
                 db.SubmitChanges();
             }
 
-            return Json(new { success = true, message = "Item returned successfully!" });
+            return Json(new { success = true, message = "Item returned and review recorded successfully!" });
         }
 
         // ── 5. NOTIFICATIONS ──

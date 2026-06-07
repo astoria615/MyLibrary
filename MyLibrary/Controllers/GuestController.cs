@@ -29,6 +29,7 @@ namespace MyLibrary.Controllers
                 }
             }
         }
+
         public ActionResult Index(int? selectedBookId, int? categoryId)
         {
             RefreshSession();
@@ -55,6 +56,26 @@ namespace MyLibrary.Controllers
                                 CreatedAt = b.CreatedAt
                             }).Take(8).ToList();
 
+            // ==============================================================================
+            // BASELINE: Get Top Featured Books first (used as standalone fallback or to fill gaps)
+            // ==============================================================================
+            var topFeaturedBooks = (from b in db.Books
+                                    where b.IsActive
+                                    let realAvgRating = (decimal?)db.Reviews.Where(r => r.BookId == b.BookId).Average(r => (double?)r.Rating)
+                                    where realAvgRating != null // Strict rule: Must have reviews to be featured
+                                    let cover = db.BookImages.Where(i => i.BookId == b.BookId && i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
+                                    let author = b.AuthorId != null ? db.Authors.Where(a => a.AuthorId == b.AuthorId).Select(a => a.FullName).FirstOrDefault() : "Unknown"
+                                    orderby realAvgRating descending
+                                    select new BookCardViewModel
+                                    {
+                                        BookId = b.BookId,
+                                        Title = b.Title,
+                                        AuthorName = author,
+                                        CoverUrl = cover,
+                                        AverageRating = realAvgRating ?? 0,
+                                        CreatedAt = b.CreatedAt
+                                    }).Take(4).ToList();
+
             // 3. DYNAMIC LOGIC: Featured vs Recommended Books
             var dynamicBooks = new List<BookCardViewModel>();
             string sectionTitle = "Featured Books";
@@ -64,54 +85,59 @@ namespace MyLibrary.Controllers
 
             if (currentRole == "Reader" && currentUserId.HasValue)
             {
-                // Traverse from Borrowings -> BorrowingDetails -> Books to track down the CategoryId
-                var lastBorrowedCategoryId = (from br in db.Borrowings
-                                              join bd in db.BorrowingDetails on br.BorrowingId equals bd.BorrowingId
-                                              join b in db.Books on bd.BookId equals b.BookId
-                                              where br.ReaderId == currentUserId.Value
-                                              orderby br.BorrowDate descending
-                                              select b.CategoryId).FirstOrDefault();
+                // FIX: Map logged-in UserId from UserAccounts to find the corresponding row in the Readers table
+                var currentReader = db.Readers.FirstOrDefault(r => r.UserId == currentUserId.Value);
 
-                if (lastBorrowedCategoryId > 0)
+                if (currentReader != null)
                 {
-                    sectionTitle = "Recommended For You";
+                    // FIX: Match on br.ReaderId using currentReader.ReaderId instead of account's UserId
+                    var userBorrowedCategoryIds = (from br in db.Borrowings
+                                                   join bd in db.BorrowingDetails on br.BorrowingId equals bd.BorrowingId
+                                                   join b in db.Books on bd.BookId equals b.BookId
+                                                   where br.ReaderId == currentReader.ReaderId
+                                                   select b.CategoryId).Distinct().ToList();
 
-                    // Query active books belonging to that exact category
-                    dynamicBooks = (from b in db.Books
-                                    where b.IsActive && b.CategoryId == lastBorrowedCategoryId
-                                    let cover = db.BookImages.Where(i => i.BookId == b.BookId && i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
-                                    let author = b.AuthorId != null ? db.Authors.Where(a => a.AuthorId == b.AuthorId).Select(a => a.FullName).FirstOrDefault() : "Unknown"
-                                    orderby b.AverageRating descending
-                                    select new BookCardViewModel
-                                    {
-                                        BookId = b.BookId,
-                                        Title = b.Title,
-                                        AuthorName = author,
-                                        CoverUrl = cover,
-                                        AverageRating = b.AverageRating ?? 0,
-                                        CreatedAt = b.CreatedAt
-                                    }).Take(4).ToList();
+                    if (userBorrowedCategoryIds.Any())
+                    {
+                        sectionTitle = "Recommended For You";
+
+                        // Query active books belonging to those preferred categories
+                        dynamicBooks = (from b in db.Books
+                                        where b.IsActive && userBorrowedCategoryIds.Contains(b.CategoryId)
+                                        let realAvgRating = (decimal?)db.Reviews.Where(r => r.BookId == b.BookId).Average(r => (double?)r.Rating)
+                                        let cover = db.BookImages.Where(i => i.BookId == b.BookId && i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
+                                        let author = b.AuthorId != null ? db.Authors.Where(a => a.AuthorId == b.AuthorId).Select(a => a.FullName).FirstOrDefault() : "Unknown"
+                                        orderby b.AverageRating descending
+                                        select new BookCardViewModel
+                                        {
+                                            BookId = b.BookId,
+                                            Title = b.Title,
+                                            AuthorName = author,
+                                            CoverUrl = cover,
+                                            AverageRating = realAvgRating ?? 0,
+                                            CreatedAt = b.CreatedAt
+                                        }).Take(4).ToList();
+
+                        // Fix Recommendation Filling Gaps: If less than 4 books exist in those categories, fill up with featured books
+                        if (dynamicBooks.Count < 4)
+                        {
+                            int itemsNeeded = 4 - dynamicBooks.Count;
+                            var fallbackFill = topFeaturedBooks
+                                .Where(fb => !dynamicBooks.Any(dbk => dbk.BookId == fb.BookId))
+                                .Take(itemsNeeded)
+                                .ToList();
+
+                            dynamicBooks.AddRange(fallbackFill);
+                        }
+                    }
                 }
             }
 
-            // Fallback: If role is Guest OR reader has never borrowed anything yet, show standard Featured Books
+            // Fallback: If role is Guest OR reader has never borrowed anything yet, set to our clean Top Featured Books list
             if (!dynamicBooks.Any())
             {
                 sectionTitle = "Featured Books";
-                dynamicBooks = (from b in db.Books
-                                where b.IsActive && b.IsFeatured == true
-                                let cover = db.BookImages.Where(i => i.BookId == b.BookId && i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
-                                let author = b.AuthorId != null ? db.Authors.Where(a => a.AuthorId == b.AuthorId).Select(a => a.FullName).FirstOrDefault() : "Unknown"
-                                orderby b.Title
-                                select new BookCardViewModel
-                                {
-                                    BookId = b.BookId,
-                                    Title = b.Title,
-                                    AuthorName = author,
-                                    CoverUrl = cover,
-                                    AverageRating = b.AverageRating ?? 0,
-                                    CreatedAt = b.CreatedAt
-                                }).Take(4).ToList();
+                dynamicBooks = topFeaturedBooks;
             }
 
             // 4. Existing Category books filtering logic
@@ -268,6 +294,7 @@ namespace MyLibrary.Controllers
 
             return View(vm);
         }
+
         // ─────────────────────────────────────────
         // AJAX: Get book detail panel
         // ─────────────────────────────────────────
@@ -282,7 +309,6 @@ namespace MyLibrary.Controllers
         // ─────────────────────────────────────────
         // CATEGORY nav dropdown (AJAX)
         // ─────────────────────────────────────────
-        // ── CATEGORY nav dropdown (AJAX) ──
         [HttpGet]
         public ActionResult CategoryMenu()
         {
@@ -291,7 +317,6 @@ namespace MyLibrary.Controllers
                 .Select(c => new CategoryItem { CategoryId = c.CategoryId, CategoryName = c.CategoryName })
                 .ToList();
 
-            // 💡 Specifying the explicit path bypasses MVC's folder search logic entirely
             return PartialView("~/Views/Guest/_CategoryMenu.cshtml", cats);
         }
 
@@ -350,6 +375,7 @@ namespace MyLibrary.Controllers
                 PublisherName = pubName
             };
         }
+
         [HttpGet]
         public ActionResult GetBookComments(int id)
         {
@@ -369,6 +395,7 @@ namespace MyLibrary.Controllers
 
             return Json(comments, JsonRequestBehavior.AllowGet);
         }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing) db.Dispose();

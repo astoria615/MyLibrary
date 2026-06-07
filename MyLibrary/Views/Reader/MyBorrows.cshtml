@@ -8,8 +8,8 @@
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
         <div>
-            <h3 style="font-family: var(--font); font-size: 16px; font-weight: 600; color: var(--text); margin: 0;">
-                📚 My Personal Borrow Records
+            <h3 style="font-family: var(--font); font-size: 16px; font-weight: 600; margin-top: 0;">
+                Book Feedback & Review
             </h3>
         </div>
         <a href="@Url.Action("Index", "Guest")" class="btn-primary"
@@ -147,7 +147,7 @@
                                             {
                                                 <button type="button" class="btn-trigger-return"
                                                         style="padding: 4px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: 500; background: rgba(26, 109, 191, 0.08); color: #1a6dbf; border: 1px solid rgba(26, 109, 191, 0.2);"
-                                                        data-borrowid="@transaction.BorrowingId" data-bookid="@book.BookId">
+                                                        data-borrowid="@transaction.BorrowingId" data-bookid="@book.BookId" data-title="@book.Title">
                                                     Drop Return
                                                 </button>
                                             }
@@ -167,6 +167,37 @@
             }
         </div>
     }
+</div>
+
+<div id="reviewModal" class="review-modal" style="display: none;">
+    <div class="review-modal-content">
+        <h3>Book Feedback & Review</h3>
+        <p style="font-size: 13px; margin-top: 6px; color: var(--text-muted);">How was your experience reading <strong id="modalBookTitle" style="color: var(--text);"></strong>?</p>
+
+        <div class="rating-group">
+            <label>Your Rating:</label>
+            <div class="star-rating">
+                <input type="radio" id="star5" name="rating" value="5" /><label for="star5" title="5 stars">★</label>
+                <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars">★</label>
+                <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="3 stars">★</label>
+                <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="2 stars">★</label>
+                <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="1 star">★</label>
+            </div>
+        </div>
+
+        <div class="comment-group" style="margin-top: 16px;">
+            <label for="reviewComment">Comment / Feedback:</label>
+            <textarea id="reviewComment" name="comment" rows="4" placeholder="Share your thoughts about this book..." class="form-control"></textarea>
+        </div>
+
+        <input type="hidden" id="modalBorrowingId" />
+        <input type="hidden" id="modalBookId" />
+
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" onclick="submitReturnWithReview(true)">Skip & Return</button>
+            <button type="button" class="btn-primary" onclick="submitReturnWithReview(false)">Submit & Return</button>
+        </div>
+    </div>
 </div>
 
 @section scripts {
@@ -194,39 +225,87 @@
                 });
             });
 
-            // Handle book return transactions seamlessly
+            // Handle book return dynamic entry interception and show review modal
             $('.btn-trigger-return').click(function (e) {
                 e.stopPropagation();
 
                 var currentBtn = $(this);
                 var borrowingId = currentBtn.data('borrowid');
                 var bookId = currentBtn.data('bookid');
+                var bookTitle = currentBtn.data('title');
 
-                if (!confirm("Are you ready to submit this item back into tracking storage immediately?")) {
-                    return;
-                }
+                // Cache button instance context globally to look back on it during submission tracking phases
+                window.activeReturnButton = currentBtn;
 
-                currentBtn.prop('disabled', true).text('Updating...').css('opacity', '0.6');
+                // Populate values dynamically into modal elements
+                $('#modalBorrowingId').val(borrowingId);
+                $('#modalBookId').val(bookId);
+                $('#modalBookTitle').text(bookTitle);
 
-                $.ajax({
-                    url: '@Url.Action("ReturnBook", "Reader")',
-                    type: 'POST',
-                    data: { borrowingId: borrowingId, bookId: bookId },
-                    success: function (data) {
-                        if (data.success) {
-                            alert(data.message);
-                            window.location.reload();
-                        } else {
-                            alert('Execution rejected: ' + data.message);
-                            currentBtn.prop('disabled', false).text('Drop Return').css('opacity', '1');
-                        }
-                    },
-                    error: function () {
-                        alert('An operational server communications error was caught.');
-                        currentBtn.prop('disabled', false).text('Drop Return').css('opacity', '1');
-                    }
-                });
+                // Reset modal state configurations from previous assignments
+                $('input[name="rating"]').prop('checked', false);
+                $('#reviewComment').val('');
+
+                // Display modal overlay
+                $('#reviewModal').css('display', 'flex');
             });
         });
+
+        // Close modal view element logic container
+        function closeReviewModal() {
+            $('#reviewModal').css('display', 'none');
+        }
+
+        // Complete processing logic integration sending payload straight back onto backend actions
+        function submitReturnWithReview(isSkip) {
+            var borrowingId = $('#modalBorrowingId').val();
+            var bookId = $('#modalBookId').val();
+            var rating = isSkip ? null : $('input[name="rating"]:checked').val();
+            var comment = isSkip ? null : $('#reviewComment').val().trim();
+
+            if (!isSkip && (!rating || !comment)) {
+                alert("Please provide both a star rating and a short comment, or click 'Skip & Return'.");
+                return;
+            }
+
+            // Disable buttons inside modal to prevent multiple clicks
+            $('.modal-actions button').prop('disabled', true).css('opacity', '0.6');
+
+            if (window.activeReturnButton) {
+                window.activeReturnButton.prop('disabled', true).text('Updating...').css('opacity', '0.6');
+            }
+
+            $.ajax({
+                url: '@Url.Action("ReturnBook", "Reader")',
+                type: 'POST',
+                data: {
+                    borrowingId: borrowingId,
+                    bookId: bookId,
+                    rating: rating,
+                    comment: comment
+                },
+                success: function (data) {
+                    closeReviewModal();
+                    if (data.success) {
+                        alert(data.message);
+                        window.location.reload();
+                    } else {
+                        alert('Execution rejected: ' + data.message);
+                        $('.modal-actions button').prop('disabled', false).css('opacity', '1');
+                        if (window.activeReturnButton) {
+                            window.activeReturnButton.prop('disabled', false).text('Drop Return').css('opacity', '1');
+                        }
+                    }
+                },
+                error: function () {
+                    closeReviewModal();
+                    alert('An operational server communications error was caught.');
+                    $('.modal-actions button').prop('disabled', false).css('opacity', '1');
+                    if (window.activeReturnButton) {
+                        window.activeReturnButton.prop('disabled', false).text('Drop Return').css('opacity', '1');
+                    }
+                }
+            });
+        }
     </script>
 }

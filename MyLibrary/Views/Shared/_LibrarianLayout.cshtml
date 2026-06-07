@@ -3,21 +3,27 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@ViewBag.Title - My Library</title>
+    <title>@ViewBag.Title – MY LIBRARY</title>
 
-    <!-- ⚡ Copying the working Reader script logic into the Head to stop the flash ⚡ -->
+    <!-- ANTI-FLASH SCRIPT: inline, no defer, no async, before ALL css -->
     <script>
-        if (localStorage.getItem('darkMode') === 'true') {
-            document.documentElement.classList.add('dark');
-
-            // This listener handles injecting it to the body as soon as the body becomes ready
-            document.addEventListener("DOMContentLoaded", function () {
-                document.body.classList.add('dark');
-            });
-        }
+        (function () {
+            var dark = localStorage.getItem('darkMode') === 'true';
+            var root = document.documentElement;
+            if (dark) {
+                root.classList.add('dark');
+                // Set background directly so no white flash before CSS loads
+                root.style.backgroundColor = '#1a1a18';
+                root.style.color = '#e8e6e0';
+            } else {
+                root.style.backgroundColor = '#f4f4f2';
+                root.style.color = '#1a1a18';
+            }
+        })();
     </script>
 
-    <link href="~/Content/library.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/Content/library.css?v=8" />
 </head>
 <body>
     <div class="app-shell">

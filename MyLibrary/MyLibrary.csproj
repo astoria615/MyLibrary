@@ -238,6 +238,9 @@
     <Content Include="Views\Librarian\Readers.cshtml" />
     <Content Include="Views\Librarian\ReaderProfile.cshtml" />
     <Content Include="Views\Librarian\Setting.cshtml" />
+    <Content Include="Views\Account\ForgotPassword.cshtml" />
+    <Content Include="Views\Account\VerifyResetCode.cshtml" />
+    <Content Include="Views\Account\ResetPassword.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

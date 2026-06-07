@@ -47,8 +47,8 @@
         }
         function toggleDarkMode(on) {
             document.body.classList.toggle('dark', on);
-            document.documentElement.classList.toggle('dark', on); // Added to sync with layout head
-            localStorage.setItem('darkMode', on);
+            document.documentElement.classList.toggle('dark', on);
+            localStorage.setItem('darkMode', String(on));
         }
         function saveViewPref(val) {
             localStorage.setItem('defaultView', val);

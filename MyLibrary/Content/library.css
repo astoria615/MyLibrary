@@ -13,13 +13,25 @@
     --font: 'Inter', sans-serif;
     --font-display: 'Playfair Display', serif;
 }
+.sidebar-nav li.has-submenu {
+    position: relative; /* Crucial anchor point for child absolute positioning */
+}
+.sidebar {
+    /* If your sidebar has a z-index, it needs to be high enough, 
+       and it MUST NOT have overflow: hidden; active on it. */
+    z-index: 10000;
+}
 
-body.dark {
+body.dark,
+html.dark body,
+html.dark {
     --bg: #1a1a18;
     --surface: #252523;
     --border: #3a3a38;
     --text: #e8e6e0;
     --text-muted: #9a9890;
+    background-color: #1a1a18;
+    color: #e8e6e0;
 }
 
 /* ── RESET ── */
@@ -118,7 +130,7 @@ a {
     left: 170px;
     top: auto;
     min-width: 200px;
-    z-index: 1000;
+    z-index: 99999 !important;
 }
 
 .cat-menu-item {
@@ -1832,3 +1844,125 @@ a {
     color: var(--text-muted);
     margin: 0;
 }
+/* ── RETURN REVIEW MODAL STYLES ── */
+.review-modal {
+    position: fixed;
+    z-index: 999999 !important; /* Fixes it on the very top of everything */
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.65); /* Dims background view */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.review-modal-content {
+    background: var(--surface, #252523);
+    border: 1px solid var(--border, #383835);
+    padding: 24px;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 440px;
+    color: #e8e6e0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+    .review-modal-content h3 {
+        margin-top: 0;
+        font-family: 'Playfair Display', serif;
+        font-size: 20px;
+    }
+
+.rating-group, .comment-group {
+    margin-top: 16px;
+}
+
+    .rating-group label, .comment-group label {
+        display: block;
+        font-size: 13px;
+        color: var(--text-muted, #a19f99);
+        margin-bottom: 6px;
+    }
+
+/* Star selection hover animation rules */
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    font-size: 28px;
+    line-height: 1;
+}
+
+    .star-rating input {
+        display: none;
+    }
+
+    .star-rating label {
+        color: #444340;
+        cursor: pointer;
+        padding: 0 4px;
+        transition: color 0.12s ease;
+    }
+
+        .star-rating input:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label {
+            color: #ffb703; /* Vibrant golden yellow star theme */
+        }
+
+/* Comments form field text container */
+.review-modal-content .form-control {
+    width: 100%;
+    background: #1a1a18;
+    border: 1px solid #383835;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    resize: none;
+}
+
+    .review-modal-content .form-control:focus {
+        border-color: rgba(26, 109, 191, 0.6);
+        outline: none;
+    }
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+    .modal-actions button {
+        padding: 8px 16px;
+        font-size: 13px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.12s;
+    }
+
+    .modal-actions .btn-secondary {
+        background: transparent;
+        border: 1px solid #383835;
+        color: #e8e6e0;
+    }
+
+        .modal-actions .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+    .modal-actions .btn-primary {
+        background: #1a6dbf;
+        border: 1px solid transparent;
+        color: #ffffff;
+    }
+
+        .modal-actions .btn-primary:hover {
+            background: #155699;
+        }

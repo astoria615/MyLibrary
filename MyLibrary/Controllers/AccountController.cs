@@ -281,8 +281,8 @@ namespace MyLibrary.Controllers
                 Session["TargetVerificationEmail"] = email;
 
                 // ⚠️ SYSTEM ACCOUNT SMTP PARAMETERS
-                string mySenderEmail = "your.real.email@gmail.com";
-                string myAppPassword = "your-16-character-app-password"; // Insert 16-character password here with no spaces
+                string mySenderEmail = "diepchi793@gmail.com";
+                string myAppPassword = "zwjjvknonjhuwnep"; // Insert 16-character password here with no spaces
 
                 using (MailMessage mail = new MailMessage())
                 {
@@ -345,6 +345,181 @@ My Library System Administration";
 
             // 3. Force redirect to Guest Index
             return RedirectToAction("Index", "Guest");
+        }
+        // ── STAGE 1: GET - Show Forgot Password Page ──
+        public ActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        // ── STAGE 2: POST - Send Verification Code ──
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ForgotPassword(string email)
+        {
+            var user = db.UserAccounts.FirstOrDefault(u => u.Email == email);
+            if (user == null)
+            {
+                ModelState.AddModelError("", "Email not found.");
+                return View();
+            }
+
+            string code = new Random().Next(1000, 9999).ToString();
+            Session["ResetCode"] = code;
+            Session["ResetEmail"] = email;
+
+            // Reuse your existing SMTP logic here
+            SendEmail(email, "Password Reset", $"Your 4-digit reset code is: {code}");
+
+            return RedirectToAction("VerifyResetCode");
+        }
+
+        // ── STAGE 3: GET/POST - Verify Code ──
+        public ActionResult VerifyResetCode() { return View(); }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult VerifyResetCode(string inputCode)
+        {
+            if (Session["ResetCode"]?.ToString() == inputCode)
+                return RedirectToAction("ResetPassword");
+
+            ModelState.AddModelError("", "Invalid code.");
+            return View();
+        }
+
+        // ── STAGE 4: POST - Finalize Password Reset ──
+        public ActionResult ResetPassword() { return View(); }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ResetPassword(string newPassword)
+        {
+            string email = Session["ResetEmail"]?.ToString();
+            var user = db.UserAccounts.FirstOrDefault(u => u.Email == email);
+
+            if (user != null)
+            {
+                user.PasswordHash = HashPassword(newPassword);
+                db.SubmitChanges();
+
+                // Clear session
+                Session["ResetCode"] = null;
+                Session["ResetEmail"] = null;
+
+                TempData["Success"] = "Password reset successful!";
+                return RedirectToAction("Login");
+            }
+            return View();
+        }
+        // Add this private helper method to your AccountController
+        private void SendEmail(string to, string subject, string body)
+        {
+            // ⚠️ REPLACE THESE WITH YOUR REAL CREDENTIALS
+            string mySenderEmail = "diepchi793@gmail.com";
+            string myAppPassword = "zwjjvknonjhuwnep";
+
+            using (MailMessage mail = new MailMessage())
+            {
+                mail.From = new MailAddress(mySenderEmail, "My Library Security");
+                mail.To.Add(to);
+                mail.Subject = subject;
+                mail.Body = body;
+                mail.IsBodyHtml = false;
+
+                using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                {
+                    smtp.UseDefaultCredentials = false;
+                    smtp.Credentials = new NetworkCredential(mySenderEmail, myAppPassword);
+                    smtp.EnableSsl = true;
+                    smtp.Send(mail);
+                }
+            }
+        }
+        // ── PROFILE GET ──
+        [Authorize]
+        public ActionResult Profile()
+        {
+            int userId;
+            if (!int.TryParse(User.Identity.Name, out userId))
+                return RedirectToAction("Logout");
+
+            using (var freshDb = new LibraryDataContext())
+            {
+                var user = freshDb.UserAccounts.FirstOrDefault(u => u.UserId == userId);
+                if (user == null) return RedirectToAction("Logout");
+
+                var reader = freshDb.Readers.FirstOrDefault(r => r.UserId == userId);
+                var librarian = freshDb.Librarians.FirstOrDefault(l => l.UserId == userId);
+
+                var vm = new ProfileViewModel
+                {
+                    UserId = user.UserId,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Phone = user.Phone,
+                    Address = user.Address,
+                    AvatarUrl = user.AvatarUrl,
+                    Role = user.Role,
+                    IsActive = user.IsActive,
+                    Gender = reader != null ? reader.Gender : null,
+                    DateOfBirth = reader != null ? reader.DateOfBirth : null,
+                    ReaderCode = reader != null ? reader.ReaderCode : "—",
+                    MembershipDate = reader != null ? reader.MembershipDate : (DateTime?)null,
+                    MembershipExpiry = reader != null ? reader.MembershipExpiry : (DateTime?)null,
+                    TotalBorrowed = reader != null ? reader.TotalBorrowed : 0,
+                    TotalFines = reader != null ? reader.TotalFines : 0,
+                    LibrarianCode = librarian != null ? librarian.LibrarianCode : null,
+                    Department = librarian != null ? librarian.Department : null,
+                    HireDate = librarian != null ? librarian.HireDate : (DateTime?)null
+                };
+
+                return View(vm);
+            }
+        }
+
+        // ── PROFILE POST ──
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Profile(ProfileViewModel model)
+        {
+            int userId;
+            if (!int.TryParse(User.Identity.Name, out userId))
+                return RedirectToAction("Logout");
+
+            var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
+            if (user == null) return RedirectToAction("Logout");
+
+            if (!user.IsActive)
+            {
+                TempData["Error"] = "Your account is deactivated.";
+                return RedirectToAction("Profile");
+            }
+
+            user.FullName = model.FullName ?? user.FullName;
+            user.Phone = model.Phone;
+            user.Address = model.Address;
+            user.UpdatedAt = DateTime.Now;
+
+            if (!string.IsNullOrEmpty(model.AvatarUrl))
+                user.AvatarUrl = model.AvatarUrl;
+
+            db.SubmitChanges();
+
+            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+            if (reader != null)
+            {
+                reader.Gender = model.Gender;
+                reader.DateOfBirth = model.DateOfBirth;
+                db.SubmitChanges();
+            }
+
+            Session["FullName"] = user.FullName;
+            Session["AvatarUrl"] = user.AvatarUrl ?? "";
+
+            TempData["Success"] = "Profile updated successfully!";
+            return RedirectToAction("Profile");
         }
         protected override void Dispose(bool disposing)
         {

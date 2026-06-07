@@ -1,9 +1,24 @@
 ﻿(function () {
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark');
+    var dark = localStorage.getItem('darkMode') === 'true';
+    if (dark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.backgroundColor = '#1a1a18';
+    }
+    if (document.body) {
+        document.body.classList.toggle('dark', dark);
+    } else {
+        document.addEventListener('DOMContentLoaded', function () {
+            document.body.classList.toggle('dark', dark);
+        });
     }
 })();
 
+function toggleDarkMode(on) {
+    document.documentElement.classList.toggle('dark', on);
+    document.documentElement.style.backgroundColor = on ? '#1a1a18' : '#f4f4f2';
+    document.body.classList.toggle('dark', on);
+    localStorage.setItem('darkMode', String(on));
+}
 function selectBook(bookId, context) {
     var panel = document.getElementById('detail-panel');
 

@@ -201,33 +201,34 @@
         }
 
         function loadBookComments(bookId) {
-            var container = document.getElementById('reader-comments-list');
-            if (!container) return;
+    // FIX: Changed 'reader-comments-list' to match 'reader-reviews-container' from your partial layout
+    var container = document.getElementById('reader-reviews-container');
+    if (!container) return;
 
-            fetch('/Guest/GetBookComments?id=' + bookId)
-                .then(function (r) { return r.json(); })
-                .then(function (comments) {
-                    if (!comments || comments.length === 0) {
-                        container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">No reviews yet.</p>';
-                        return;
-                    }
-                    container.innerHTML = '';
-                    comments.forEach(function (c) {
-                        container.insertAdjacentHTML('beforeend',
-                            '<div style="border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:10px;margin-bottom:10px">' +
-                            '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
-                            '<strong style="font-size:0.85rem;color:#fff">' + (c.UserName || 'Anonymous') + '</strong>' +
-                            '<span style="color:#fbbf24;font-size:0.75rem">★ ' + (c.Rating || 5) + '/5</span>' +
-                            '</div>' +
-                            '<p style="margin:0;font-size:0.85rem;opacity:0.8;line-height:1.4">' + (c.Text || '') + '</p>' +
-                            '</div>'
-                        );
-                    });
-                })
-                .catch(function () {
-                    if (container) container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">Unable to load reviews.</p>';
-                });
-        }
+    fetch('/Guest/GetBookComments?id=' + bookId)
+        .then(function (r) { return r.json(); })
+        .then(function (comments) {
+            if (!comments || comments.length === 0) {
+                container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">No reviews yet.</p>';
+                return;
+            }
+            container.innerHTML = '';
+            comments.forEach(function (c) {
+                container.insertAdjacentHTML('beforeend',
+                    '<div style="border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:10px;margin-bottom:10px">' +
+                    '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+                    '<strong style="font-size:0.85rem;color:#fff">' + (c.UserName || 'Anonymous') + '</strong>' +
+                    '<span style="color:#fbbf24;font-size:0.75rem">★ ' + (c.Rating || 5) + '/5</span>' +
+                    '</div>' +
+                    '<p style="margin:0;font-size:0.85rem;opacity:0.8;line-height:1.4">' + (c.Text || '') + '</p>' +
+                    '</div>'
+                );
+            });
+        })
+        .catch(function () {
+            if (container) container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">Unable to load reviews.</p>';
+        });
+}
 
         document.addEventListener('click', function (e) {
             var panel = document.getElementById('detail-panel');

@@ -2,6 +2,8 @@
 @{
     ViewBag.Title = Model.CategoryName;
     Layout = "~/Views/Shared/_Layout.cshtml";
+    // Check if user is logged in to align with Index layout mechanics
+    bool isUserLoggedIn = Request.IsAuthenticated;
 }
 
 <div class="home-layout">
@@ -48,7 +50,7 @@
                     @foreach (var book in Model.Books)
                     {
                         <div class="book-card @(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
-                             onclick="selectBook(@book.BookId, 'list')">
+                             onclick="selectBook(event, @book.BookId, 'grid')" style="cursor:pointer;">
                             <div class="book-cover">
                                 @if (!string.IsNullOrEmpty(book.CoverUrl))
                                 {<img src="@book.CoverUrl" alt="@book.Title" /> }
@@ -77,7 +79,7 @@
                         @foreach (var book in Model.Books)
                         {
                             <tr class="@(Model.SelectedBook != null && Model.SelectedBook.BookId == book.BookId ? "selected" : "")"
-                                onclick="selectBook(@book.BookId, 'list')" style="cursor:pointer">
+                                onclick="selectBook(event, @book.BookId, 'list')" style="cursor:pointer">
                                 <td>@book.Title</td>
                                 <td>@book.AuthorName</td>
                                 <td>—</td>
@@ -94,7 +96,6 @@
             @if (Model.TotalPages > 1)
             {
                 <div class="pagination-container" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin: 30px 0;">
-
                     @if (Model.CurrentPage > 1)
                     {
                         <a href="@Url.Action("BookList", "Guest", new { categoryId = Model.CategoryId, q = Model.SearchQuery, sort = Model.SortBy, letter = Model.FilterLetter, view = Model.ViewMode, page = Model.CurrentPage - 1 })"
@@ -129,22 +130,182 @@
                     }
                 </div>
             }
-
         </section>
     </div>
 
-    <aside class="book-detail-panel" id="detail-panel" style="display:@(Model.SelectedBook != null ? "flex" : "none")">
-        @if (Model.SelectedBook != null)
-        {
-            Html.RenderPartial("_BookDetail", Model.SelectedBook);
-        }
+    <aside class="book-detail-panel" id="detail-panel" style="display:@(Model.SelectedBook != null ? "flex" : "none");">
+        <div id="detail-panel-content" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
+            @if (Model.SelectedBook != null)
+            {
+                Html.RenderPartial("_BookDetail", Model.SelectedBook);
+            }
+        </div>
     </aside>
 </div>
 
 @section Scripts {
     <script>
-        // pass ISBN to the list view (LINQ to SQL needs a join to bring ISBN into BookCard)
-        // Already handled via detail panel AJAX
+        // ADAPTED: Brought over global session state verification trackers from Index view
+        var IS_AUTHENTICATED = @(isUserLoggedIn ? "true" : "false");
+        var LOGIN_REDIRECT_URL = '@Url.Action("Login", "Account")';
+
+        function toggleSortMenu() {
+            var menu = document.getElementById("sort-menu");
+            if (menu.style.display === "none") {
+                menu.style.display = "block";
+            } else {
+                menu.style.display = "none";
+            }
+        }
+
+        // FIXED: Added event argument 'e' payload target reference here
+        function selectBook(e, bookId, viewMode) {
+            // Cut off bubble propagation chain so document listener doesn't hide it instantly
+            if (e && typeof e.stopPropagation === "function") {
+                e.stopPropagation();
+            }
+
+            var panel = document.getElementById("detail-panel");
+            var contentContainer = document.getElementById("detail-panel-content");
+            if (!panel || !contentContainer) return;
+
+            // ADAPTED: Added toggle behavior if the same book is clicked repeatedly
+            if (panel.dataset.bookId == bookId && panel.style.display !== 'none') {
+                panel.style.display = 'none';
+                panel.dataset.bookId = '';
+                $('.book-card, .book-list-table tr').removeClass('selected');
+                return;
+            }
+
+            $('.book-card, .book-list-table tr').removeClass('selected');
+
+            // Highlight current targets properly
+            if (viewMode === 'grid') {
+                $(`.book-card[onclick*="${bookId}"]`).addClass('selected');
+            } else {
+                $(`.book-list-table tr[onclick*="${bookId}"]`).addClass('selected');
+            }
+
+            panel.style.display = "flex";
+            contentContainer.innerHTML = '<p style="color:#fff;opacity:0.6;font-size:13px;margin:auto">Loading...</p>';
+
+            // Using your stable jQuery .load method to populate the content wrapper layout container
+            $(contentContainer).load('@Url.Action("_BookDetail", "Guest")?id=' + bookId, function(response, status, xhr) {
+                if (status === "error") {
+                    console.log("Error loading book detail partial view: " + xhr.status + " " + xhr.statusText);
+                    panel.style.display = 'none';
+                    return;
+                }
+                panel.dataset.bookId = bookId;
+                panel.scrollTop = 0;
+
+                loadBookComments(bookId);
+                // ADAPTED: Inject intercept logic onto the newly loaded partial view borrow buttons
+                hookDetailPanelBorrowButton(bookId);
+            });
+        }
+
+        // ADAPTED: Added button state intercept rules matching Index functionality
+        function hookDetailPanelBorrowButton(bookId) {
+            setTimeout(function() {
+                var detailBtn = document.querySelector('#detail-panel .btn-primary, #detail-panel button');
+                if (detailBtn) {
+                    var titleEl = document.querySelector('#detail-panel h2, #detail-panel .detail-title');
+                    var titleText = titleEl ? titleEl.textContent.trim() : "Selected Book";
+
+                    detailBtn.removeAttribute('onclick');
+
+                    detailBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (!IS_AUTHENTICATED) {
+                            alert("Authentication Required: Please sign in to add items to your borrow request.");
+                            window.location.href = LOGIN_REDIRECT_URL;
+                            return;
+                        }
+
+                        if (typeof addAssetToBorrowForm === "function") {
+                            addAssetToBorrowForm(bookId, titleText);
+                        }
+                    });
+                }
+            }, 150);
+        }
+
+        function loadBookComments(bookId) {
+            var reviewContainer = $('#reader-reviews-container');
+
+            if(reviewContainer.length) {
+                reviewContainer.html('<p style="font-size: 12px; opacity: 0.7; padding: 4px 0;">Loading comments...</p>');
+
+                $.ajax({
+                    url: '@Url.Action("GetBookComments", "Guest")',
+                    type: 'GET',
+                    data: { id: bookId },
+                    success: function (comments) {
+                        reviewContainer.empty();
+
+                        if (!comments || comments.length === 0) {
+                            reviewContainer.html('<p style="font-size: 12px; opacity: 0.6; font-style: italic; padding: 4px 0;">No reviews yet for this book.</p>');
+                            return;
+                        }
+
+                        var html = '<div style="display: flex; flex-direction: column; gap: 12px; max-height: 220px; overflow-y: auto; padding-right: 4px;">';
+
+                        $.each(comments, function (index, rev) {
+                            var stars = '';
+                            for (var i = 1; i <= 5; i++) {
+                                stars += i <= rev.Rating ? '★' : '☆';
+                            }
+
+                            html += `
+                                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                        <strong style="font-size: 12px; color: #ffffff;">${rev.UserName}</strong>
+                                        <span style="color: #ffb703; font-size: 11px;">${stars}</span>
+                                    </div>
+                                    <p style="font-size: 12px; margin: 0; color: rgba(255,255,255,0.85); line-height: 1.4;">${rev.Text}</p>
+                                </div>
+                            `;
+                        });
+
+                        html += '</div>';
+                        reviewContainer.html(html);
+                    },
+                    error: function () {
+                        reviewContainer.html('<p style="font-size: 12px; color: #ff8888; padding: 4px 0;">Failed to load reviews.</p>');
+                    }
+                });
+            }
+        }
+
+        // ADAPTED: Refined outside listener to close the sidebar detail panel AND drop menus smoothly
+        document.addEventListener('click', function (e) {
+            // 1. Handle closing Sort menu if clicked outside
+            if (!e.target.matches('.sort-btn')) {
+                var dropdowns = document.getElementsByClassName("sort-menu");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.style.display === "block") {
+                        openDropdown.style.display = "none";
+                    }
+                }
+            }
+
+            // 2. Handle closing the sidebar details panel if clicked outside card/row selections completely
+            var panel = document.getElementById('detail-panel');
+            if (!panel || panel.style.display === 'none') return;
+
+            // Checked inside sidebar layout frame node lookup
+            var clickedInsidePanel = e.target.closest('#detail-panel');
+
+            if (!clickedInsidePanel) {
+                panel.style.display = 'none';
+                panel.dataset.bookId = '';
+                $('.book-card, .book-list-table tr').removeClass('selected');
+            }
+        });
     </script>
 }
 
