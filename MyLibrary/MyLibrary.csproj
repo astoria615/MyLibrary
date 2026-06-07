@@ -131,12 +131,14 @@
     </Compile>
     <Compile Include="Models\AccountViewModels.cs" />
     <Compile Include="Models\BookListViewModel.cs" />
+    <Compile Include="Models\BorrowViewModel.cs" />
     <Compile Include="Models\HomeViewModel.cs" />
     <Compile Include="Models\Library.designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Library.dbml</DependentUpon>
     </Compile>
+    <Compile Include="Models\ReaderFinesViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -230,6 +232,8 @@
     <Content Include="Views\Admin\Reviews.cshtml" />
     <Content Include="Views\Admin\EditBook.cshtml" />
     <Content Include="Views\Admin\_BookFormFields.cshtml" />
+    <Content Include="Views\Reader\BorrowForm.cshtml" />
+    <Content Include="Views\Reader\MyFines.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

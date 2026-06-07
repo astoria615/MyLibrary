@@ -1,0 +1,440 @@
+﻿@model MyLibrary.Models.ReaderFinesViewModel
+@{
+    ViewBag.Title = "My Account Balance & Fines";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    /* Scoped Variables for Theme Harmony */
+    :root {
+        --fine-danger: #e24b4a;
+        --fine-danger-bg: rgba(226, 75, 74, 0.08);
+        --fine-success: #3b6d11;
+        --fine-success-bg: rgba(99, 153, 34, 0.08);
+        --card-radius: 12px;
+        --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .fines-wrapper {
+        font-family: var(--font, 'Segoe UI', system-ui, sans-serif);
+        max-width: 1000px;
+        margin: 20px auto;
+        padding: 0 16px;
+    }
+
+    /* Headings & Typography */
+    .fines-header {
+        margin-bottom: 24px;
+    }
+
+        .fines-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+            color: var(--text, #222);
+        }
+
+        .fines-header p {
+            font-size: 14px;
+            color: var(--text-muted, #666);
+            margin: 0;
+        }
+
+    /* Split Grid Structure */
+    .fines-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+        align-items: start;
+    }
+
+    @@media (min-width: 768px) {
+        .fines-grid {
+            grid-template-columns: 320px 1fr;
+        }
+    }
+
+    /* Panel Cards */
+    .fine-panel {
+        background: var(--surface, #ffffff);
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: var(--card-radius);
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03);
+    }
+
+    /* Banners & States */
+    .status-alert {
+        display: flex;
+        gap: 12px;
+        padding: 14px;
+        border-radius: 8px;
+        font-size: 13.5px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+    }
+
+        .status-alert.clean {
+            background: var(--fine-success-bg);
+            border: 1px solid rgba(99, 153, 34, 0.2);
+            color: var(--fine-success);
+        }
+
+        .status-alert.danger {
+            background: var(--fine-danger-bg);
+            border: 1px solid rgba(226, 75, 74, 0.2);
+            color: var(--fine-danger);
+        }
+
+    /* Ledger Summary Tile */
+    .ledger-summary-box {
+        background: var(--bg, #f8fafc);
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+    }
+
+    .ledger-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted, #64748b);
+        letter-spacing: 0.5px;
+    }
+
+    .ledger-amount {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--fine-danger);
+        margin: 6px 0 16px 0;
+    }
+
+    /* Tables & Breakdown Lists */
+    .fine-list-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+        .fine-list-table th {
+            background: var(--bg, #f8fafc);
+            color: var(--text-muted, #64748b);
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border, #e2e8f0);
+        }
+
+        .fine-list-table td {
+            padding: 14px 16px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border, #f1f5f9);
+            color: var(--text, #334155);
+            vertical-align: middle;
+        }
+
+        .fine-list-table tr:last-child td {
+            border-bottom: none;
+        }
+
+    /* Interactive Buttons */
+    .btn-action-view {
+        background: transparent;
+        color: #475569;
+        border: 1px solid var(--border, #cbd5e1);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition-smooth);
+    }
+
+        .btn-action-view:hover {
+            background: var(--bg, #f1f5f9);
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+    /* Modal Architecture */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        z-index: 1100;
+        padding: 16px;
+    }
+
+    .modal-surface {
+        background: #ffffff;
+        border-radius: var(--card-radius);
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+        overflow: hidden;
+        animation: modalScaleUp 0.15s ease-out forwards;
+    }
+
+    @@keyframes modalScaleUp {
+        from {
+            transform: scale(0.96);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    /* Payment Custom Row Selections */
+    .payment-tile-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 16px 0;
+    }
+
+    .payment-tile {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 16px;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 8px;
+        cursor: pointer;
+        background: #fff;
+        transition: var(--transition-smooth);
+    }
+
+        .payment-tile:hover {
+            border-color: #94a3b8;
+            background: var(--bg, #f8fafc);
+            transform: translateY(-1px);
+        }
+
+    .payment-icon-frame {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        background: var(--bg, #f1f5f9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+</style>
+
+<div class="fines-wrapper">
+    <div class="fines-header">
+        <h2>Fines & Balances</h2>
+        <p>Settle outstanding transactional fees and review your history records.</p>
+    </div>
+
+    @if (Model.FinesList == null || Model.FinesList.Count == 0)
+    {
+        <!-- ZERO STATE BALANCE -->
+        <div class="fine-panel" style="text-align: center; padding: 48px 24px;">
+            <div class="status-alert clean" style="max-width: 500px; margin: 0 auto 24px auto; text-align: left;">
+                <span style="font-size: 20px; user-select: none;">✨</span>
+                <div>
+                    <strong style="display: block; margin-bottom: 2px;">Your account ledger is clear!</strong>
+                    <span>You don't have any pending structural liabilities or fine allocations at this moment.</span>
+                </div>
+            </div>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">Keep up the good habits by returning tracking assets inside loan cycle parameters.</p>
+            <a href="@Url.Action("Index", "Guest")" class="btn-primary" style="text-decoration: none; display: inline-block; padding: 10px 24px;">
+                Browse Catalog Stack
+            </a>
+        </div>
+    }
+    else
+    {
+        <!-- ACTIVE ACCOUNT FINES SYSTEM GRID -->
+        <div class="fines-grid">
+
+            <!-- LEFT PANEL: BALANCE CARD -->
+            <div class="fine-panel">
+                <div class="status-alert danger">
+                    <span style="font-size: 18px; user-select: none;">⚠️</span>
+                    <div>
+                        <strong>Action Required</strong>
+                        <span style="display: block; margin-top: 2px; font-size: 12.5px; opacity: 0.95;">Unpaid tracking charges restrict systemic borrowing updates.</span>
+                    </div>
+                </div>
+
+                <div class="ledger-summary-box">
+                    <span class="ledger-label">Total Outstanding Balance</span>
+                    <div class="ledger-amount">@Model.TotalFineAmount.ToString("N0") <span style="font-size: 16px; font-weight: 600;">VND</span></div>
+
+                    <button type="button" class="btn-primary" style="width: 100%; margin: 0; padding: 12px 16px; font-size: 14px;" onclick="openPaymentModal(@Model.TotalFineAmount)">
+                        💳 Clear Total Balance
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: DETAILED BREAKDOWN LIST -->
+            <div class="fine-panel" style="padding: 0; overflow: hidden;">
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--border, #e2e8f0);">
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 600; color: #1e293b;">Breakdown Itemized Statement</h3>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="fine-list-table">
+                        <thead>
+                            <tr>
+                                <th>Ledger Item ID</th>
+                                <th>Issued Date</th>
+                                <th>Amount Owed</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var fine in Model.FinesList)
+                            {
+                                <tr>
+                                    <td><span style="font-family: monospace; font-weight: 600; color: #475569;">#@fine.FineId</span></td>
+                                    <td style="color: #64748b;">@fine.IssuedDate.ToString("yyyy-MM-dd")</td>
+                                    <td><strong style="color: var(--fine-danger); font-weight: 600;">@fine.Amount.ToString("N0") VND</strong></td>
+                                    <td style="text-align: right;">
+                                        <button type="button" class="btn-action-view" onclick="showReasonModal('@fine.FineId', '@fine.Reason', '@fine.BookTitle')">
+                                            View Reason
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+<!-- MODAL BOX 1: REASON VIEW COMPONENT -->
+<div id="reasonModal" class="modal-overlay" onclick="closeModalOnOuterClick(event, this)">
+    <div class="modal-surface">
+        <div class="modal-body">
+            <h3 id="reasonModalTitle" style="margin: 0 0 16px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Fine Log Details</h3>
+
+            <div style="margin-bottom: 14px;">
+                <label style="font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 4px;">Target Asset Link</label>
+                <span id="reasonBookTitle" style="font-size: 14px; font-weight: 500; color: #334155; display: block; line-height: 1.4;">Asset Description Metadata</span>
+            </div>
+
+            <div style="margin-bottom: 24px; padding: 12px 14px; background: #fff5f5; border-left: 3px solid var(--fine-danger); border-radius: 4px;">
+                <label style="font-size: 11px; font-weight: 700; color: var(--fine-danger); text-transform: uppercase; display: block; margin-bottom: 2px;">System Infraction Code</label>
+                <span id="reasonText" style="font-size: 14px; color: #991b1b; font-weight: 500;">(Overdue / Loose Copy Asset Deficit)</span>
+            </div>
+
+            <button type="button" class="btn-primary" style="width: 100%; margin: 0; padding: 10px;" onclick="closeModal('reasonModal')">
+                Close Info Frame
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL BOX 2: INTEGRATED GATEWAY COMPONENT -->
+<div id="paymentModal" class="modal-overlay" onclick="closeModalOnOuterClick(event, this)">
+    <div class="modal-surface">
+        <div class="modal-body">
+            <h3 style="margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: #0f172a;">Select Remittance Method</h3>
+            <p style="margin: 0; font-size: 13px; color: #64748b;">Processing transactional value statement balance of: <strong id="modalPayAmount" style="color: var(--fine-danger);">0</strong> VND</p>
+
+            <div class="payment-tile-list">
+                <!-- VNPAY TILE -->
+                <div class="payment-tile" onclick="executeGateway('VNPay')">
+                    <div class="payment-icon-frame" style="color: #0284c7; background: #f0f9ff;">💎</div>
+                    <div style="flex: 1;">
+                        <span style="display: block; font-size: 13.5px; font-weight: 600; color: #1e293b;">VNPay Gateway</span>
+                        <span style="display: block; font-size: 11px; color: #64748b;">Local credit accounts or mobile QR banking</span>
+                    </div>
+                </div>
+
+                <!-- MOMO TILE -->
+                <div class="payment-tile" onclick="executeGateway('MoMo')">
+                    <div class="payment-icon-frame" style="color: #db2777; background: #fdf2f8;">📱</div>
+                    <div style="flex: 1;">
+                        <span style="display: block; font-size: 13.5px; font-weight: 600; color: #1e293b;">MoMo Wallet</span>
+                        <span style="display: block; font-size: 11px; color: #64748b;">Instant authorization inside personal app layer</span>
+                    </div>
+                </div>
+
+                <!-- PAYPAL TILE -->
+                <div class="payment-tile" onclick="executeGateway('PayPal')">
+                    <div class="payment-icon-frame" style="color: #2563eb; background: #eff6ff;">🦅</div>
+                    <div style="flex: 1;">
+                        <span style="display: block; font-size: 13.5px; font-weight: 600; color: #1e293b;">PayPal Inc</span>
+                        <span style="display: block; font-size: 11px; color: #64748b;">International settlement handling channels</span>
+                    </div>
+                </div>
+
+                <!-- OFFLINE COUNTER TILE -->
+                <div class="payment-tile" onclick="executeGateway('Cash')">
+                    <div class="payment-icon-frame" style="color: #16a34a; background: #f0fdf4;">💵</div>
+                    <div style="flex: 1;">
+                        <span style="display: block; font-size: 13.5px; font-weight: 600; color: #1e293b;">Counter Cash Settle</span>
+                        <span style="display: block; font-size: 11px; color: #64748b;">In-person ledger reconciliation at desk counter</span>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn-outline-sm" style="width: 100%; padding: 10px; border-radius: 8px; margin-top: 4px;" onclick="closeModal('paymentModal')">
+                Abort Payment Execution
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        function showReasonModal(fineId, reason, bookTitle) {
+            document.getElementById('reasonModalTitle').textContent = 'Fine Summary Item #' + fineId;
+            document.getElementById('reasonBookTitle').textContent = bookTitle ? bookTitle : "System Administrative Ledger Charge Account Adjustment";
+            document.getElementById('reasonText').textContent = reason;
+            document.getElementById('reasonModal').style.display = 'flex';
+        }
+
+        function openPaymentModal(totalAmt) {
+            document.getElementById('modalPayAmount').textContent = totalAmt.toLocaleString('en-US');
+            document.getElementById('paymentModal').style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function closeModalOnOuterClick(event, element) {
+            if (event.target === element) {
+                element.style.display = 'none';
+            }
+        }
+
+        function executeGateway(methodName) {
+            closeModal('paymentModal');
+
+            if (methodName === 'Cash') {
+                alert('✓ System Logging Complete!\nPlease bring exact balance metrics to the central hub desk configuration point. A librarian clerk will clear this log sequence upon transaction fulfillment.');
+                return;
+            }
+
+            alert('🔄 Handshaking Secure Pipelines: Initializing routing frameworks for ' + methodName + ' API configurations context...');
+
+            // Scalable endpoint landing pad link option:
+            // window.location.href = '@Url.Action("ProcessPayment", "Reader")?gateway=' + methodName;
+        }
+    </script>
+}

@@ -2,12 +2,14 @@
 @{
     ViewBag.Title = "Home";
     Layout = "~/Views/Shared/_Layout.cshtml";
+    // Check if user is logged in
+    bool isUserLoggedIn = Request.IsAuthenticated;
 }
 
 <div class="home-layout" style="display: flex; align-items: flex-start; gap: 24px; width: 100%; position: relative;">
     <div class="home-main" style="flex: 1; min-width: 0;">
         <div class="home-banner">
-            @if (Request.IsAuthenticated)
+            @if (isUserLoggedIn)
             {
                 <div class="banner-greeting">
                     <h1>Hello, @(Session["FullName"] != null ? Session["FullName"].ToString().Split(' ')[0] : "Reader") 👋</h1>
@@ -26,7 +28,6 @@
                 </div>
             }
         </div>
-
 
         <section class="book-section">
             <div class="section-header">
@@ -122,18 +123,20 @@
         </section>
     </div>
 
-
     <aside class="book-detail-panel" id="detail-panel" style="display:none">
     </aside>
 </div>
 
 @section Scripts {
     <script>
+        // Store user state globally within view layout logic
+        var IS_AUTHENTICATED = @(isUserLoggedIn ? "true" : "false");
+        var LOGIN_REDIRECT_URL = '@Url.Action("Login", "Account")';
+
         function selectBook(bookId, element) {
             var panel = document.getElementById('detail-panel');
             if (!panel) return;
 
-            // Toggle off if same book clicked
             if (panel.dataset.bookId == bookId && panel.style.display !== 'none') {
                 panel.style.display = 'none';
                 panel.dataset.bookId = '';
@@ -141,15 +144,12 @@
                 return;
             }
 
-            // Highlight selected card
             document.querySelectorAll('.book-card').forEach(function (c) { c.classList.remove('selected'); });
             if (element) element.classList.add('selected');
 
-            // Show loading
             panel.style.display = 'flex';
-            panel.innerHTML = '<p style="color:#fff;opacity:.6;font-size:13px;margin:auto">Loading...</p>';
+            panel.innerHTML = '<p style="color:#fff;opacity:#6;font-size:13px;margin:auto">Loading...</p>';
 
-            // Fetch detail
             fetch('/Guest/BookDetail?id=' + bookId)
                 .then(function (r) {
                     if (!r.ok) throw new Error('Not found');
@@ -159,12 +159,45 @@
                     panel.innerHTML = html;
                     panel.dataset.bookId = bookId;
                     panel.scrollTop = 0;
-                    // Load comments
                     loadBookComments(bookId);
+
+                    // Intercept the inner detail panel borrow actions automatically
+                    hookDetailPanelBorrowButton(bookId);
                 })
                 .catch(function () {
                     panel.style.display = 'none';
                 });
+        }
+
+        function hookDetailPanelBorrowButton(bookId) {
+            setTimeout(function() {
+                var detailBtn = document.querySelector('#detail-panel .btn-primary, #detail-panel button');
+                if (detailBtn) {
+                    // Extract book metadata from current DOM card view text
+                    var titleEl = document.querySelector('#detail-panel h2, #detail-panel .detail-title');
+                    var titleText = titleEl ? titleEl.textContent.trim() : "Selected Book";
+
+                    // Strip any default standard fetch POST click attributes
+                    detailBtn.removeAttribute('onclick');
+
+                    detailBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Enforce authentication gate check
+                        if (!IS_AUTHENTICATED) {
+                            alert("Authentication Required: Please sign in to add items to your borrow request.");
+                            window.location.href = LOGIN_REDIRECT_URL;
+                            return;
+                        }
+
+                        // Call global utility layout functions from custom scripts scope
+                        if (typeof addAssetToBorrowForm === "function") {
+                            addAssetToBorrowForm(bookId, titleText);
+                        }
+                    });
+                }
+            }, 150);
         }
 
         function loadBookComments(bookId) {
@@ -196,7 +229,6 @@
                 });
         }
 
-        // Close panel on outside click
         document.addEventListener('click', function (e) {
             var panel = document.getElementById('detail-panel');
             if (!panel || panel.style.display === 'none') return;

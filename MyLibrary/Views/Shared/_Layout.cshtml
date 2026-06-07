@@ -32,6 +32,18 @@
                 @if (Request.IsAuthenticated)
                 {
                     <li>@Html.ActionLink("My Borrows", "MyBorrows", "Reader")</li>
+                    <li>
+                        <a href="@Url.Action("BorrowForm", "Reader")" style="position: relative; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                            <span>Borrow Form</span>
+                            <span id="sidebar-basket-count" style="display: none; background-color: #e63946; color: #ffffff; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; line-height: 1;">0</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="@Url.Action("MyFines", "Reader")" class="nav-item nav-fines">
+                            My Fines
+                            <span class="fine-badge-dot" style="display: none;"></span>
+                        </a>
+                    </li>
                 }
             </ul>
             <div class="sidebar-divider"></div>
@@ -41,9 +53,6 @@
                 @if (Request.IsAuthenticated)
                 {
                     <li>@Html.ActionLink("Logout", "Logout", "Account")</li>
-                }
-                else
-                {
                 }
             </ul>
         </nav>
@@ -93,8 +102,57 @@
         </div>
     </div>
 
-    <script src="~/Scripts/jquery-3.6.0.min.js"></script>
+    <script src="~/Scripts/jquery-3.7.0.min.js"></script>
     <script src="~/Scripts/library.js"></script>
+
+    <script type="text/javascript">
+        // 1. Synchronize the layout sidebar counter instantly based on client state
+        function updateNavbarBasketBadge() {
+            var basket = JSON.parse(localStorage.getItem('borrowBasket')) || [];
+            var badge = document.getElementById('sidebar-basket-count');
+            if (badge) {
+                if (basket.length > 0) {
+                    badge.textContent = basket.length;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+
+        // 2. Global utility function triggered whenever "Borrow Now" gets clicked across pages
+        function addAssetToBorrowForm(bookId, bookTitle) {
+            var basket = JSON.parse(localStorage.getItem('borrowBasket')) || [];
+
+            // Rule: Check if already present in the list
+            var exists = basket.some(function (item) { return item.id === bookId; });
+            if (exists) {
+                alert("This item is already added to your current borrow request layout.");
+                return;
+            }
+
+            // Rule Check: Max 3 books configuration block
+            if (basket.length >= 3) {
+                alert("System Limit: You can select a maximum of 3 books per single request form.");
+                return;
+            }
+
+            // Push into local array storage securely
+            basket.push({ id: bookId, title: bookTitle });
+            localStorage.setItem('borrowBasket', JSON.stringify(basket));
+
+            // Re-render UI bubble state
+            updateNavbarBasketBadge();
+
+            alert('"' + bookTitle + '" successfully added to your Borrow Form.');
+        }
+
+        // Initialize state on page display
+        document.addEventListener("DOMContentLoaded", function () {
+            updateNavbarBasketBadge();
+        });
+    </script>
+
     @RenderSection("Scripts", required: false)
 </body>
 </html>

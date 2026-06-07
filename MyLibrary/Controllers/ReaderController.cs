@@ -1,10 +1,9 @@
 ﻿using MyLibrary.Models;
-using MyLibrary.Models.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
-
+using MyLibrary.Models.ViewModels;
 namespace MyLibrary.Controllers
 {
     [Authorize]
@@ -12,19 +11,19 @@ namespace MyLibrary.Controllers
     {
         private LibraryDataContext db = new LibraryDataContext();
 
-        // ── MY BORROWS ──
+        // ── 1. MY BORROWS HISTORY & STATUS OVERVIEW ──
         public ActionResult MyBorrows()
         {
             int userId = int.Parse(User.Identity.Name);
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
             if (reader == null) return RedirectToAction("Index", "Guest");
 
-            var borrows = (from b in db.Borrowings
-                           where b.ReaderId == reader.ReaderId
-                           orderby b.BorrowDate descending
-                           select b).ToList();
+            var borrowings = db.Borrowings
+                .Where(b => b.ReaderId == reader.ReaderId)
+                .OrderByDescending(b => b.BorrowDate)
+                .ToList();
 
-            var vm = borrows.Select(b =>
+            List<ReaderBorrowHistoryItem> vm = borrowings.Select(b =>
             {
                 var details = db.BorrowingDetails.Where(d => d.BorrowingId == b.BorrowingId).ToList();
                 var bookItems = details.Select(d =>
@@ -33,7 +32,8 @@ namespace MyLibrary.Controllers
                     var cover = book != null ? db.BookImages
                         .Where(i => i.BookId == book.BookId && i.IsPrimary)
                         .Select(i => i.ImageUrl).FirstOrDefault() : null;
-                    return new BorrowBookItem
+
+                    return new ReaderBorrowBookItem
                     {
                         BookId = d.BookId,
                         Title = book?.Title ?? "Unknown",
@@ -43,7 +43,7 @@ namespace MyLibrary.Controllers
                     };
                 }).ToList();
 
-                return new BorrowHistoryItem
+                return new ReaderBorrowHistoryItem
                 {
                     BorrowingId = b.BorrowingId,
                     BorrowDate = b.BorrowDate,
@@ -57,75 +57,61 @@ namespace MyLibrary.Controllers
             return View(vm);
         }
 
-        // ── NOTIFICATIONS (AJAX) ──
-        public ActionResult Notifications()
+        // ── 2. PRE-FILLED BORROW BASKET FORM VIEW ──
+        public ActionResult BorrowForm()
         {
             int userId = int.Parse(User.Identity.Name);
+
+            var userAccount = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
-            var notes = new List<NotificationItem>();
 
-            if (reader != null)
+            if (userAccount == null || reader == null)
+                return RedirectToAction("Index", "Guest");
+
+            var model = new ReaderBorrowFormViewModel
             {
-                // DB notifications (fines etc)
-                var dbNotifs = db.EmailNotifications
-                    .Where(n => n.UserId == userId && n.Status == "Sent")
-                    .OrderByDescending(n => n.CreatedAt)
-                    .Take(5).ToList();
+                ReaderId = reader.ReaderId,
+                ReaderCode = reader.ReaderCode,
+                FullName = userAccount.FullName,
+                Email = userAccount.Email,
+                Phone = userAccount.Phone,
+                BorrowDate = DateTime.Now,
+                DueDate = DateTime.Now.AddDays(14), // Added missing comma here 🚀
+                AvatarUrl = userAccount.AvatarUrl
+            };
 
-                foreach (var n in dbNotifs)
-                {
-                    notes.Add(new NotificationItem
-                    {
-                        Type = n.NotificationType == "FineNotification" ? "fine" : "new",
-                        Message = n.Subject + ": " + n.Body.Substring(0, Math.Min(80, n.Body.Length)) + "...",
-                        Icon = n.NotificationType == "FineNotification" ? "💰" : "📚"
-                    });
-                }
-
-                // Almost due
-                var almostDue = db.Borrowings
-                    .Where(b => b.ReaderId == reader.ReaderId &&
-                                (b.Status == "Approved") &&
-                                b.ReturnDate == null &&
-                                b.DueDate <= DateTime.Now.AddDays(3) &&
-                                b.DueDate >= DateTime.Now)
-                    .ToList();
-
-                foreach (var borrow in almostDue)
-                {
-                    var detail = db.BorrowingDetails.FirstOrDefault(d => d.BorrowingId == borrow.BorrowingId);
-                    var book = detail != null ? db.Books.FirstOrDefault(b => b.BookId == detail.BookId) : null;
-                    notes.Add(new NotificationItem
-                    {
-                        Type = "due",
-                        Message = string.Format("'{0}' is due on {1}!", book?.Title ?? "A book", borrow.DueDate.ToString("MMM dd")),
-                        Icon = "⏰"
-                    });
-                }
-            }
-
-            return PartialView("_Notifications", notes);
+            return View(model);
         }
-        // ── BORROW REQUEST ──
+
+        // ── 3. PROCESS MULTIPLE ITEMS SIMULTANEOUSLY ──
         [HttpPost]
-        public ActionResult Borrow(int bookId)
+        public ActionResult ConfirmBorrow(BorrowRequest request)
         {
+            var bookIds = request?.BookIds;
+
+            if (bookIds == null || !bookIds.Any())
+                return Json(new { success = false, message = "Your selection is empty." });
+
+            if (bookIds.Count > 3)
+                return Json(new { success = false, message = "Maximum 3 books allowed at a time." });
+
             int userId = int.Parse(User.Identity.Name);
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
             if (reader == null) return Json(new { success = false, message = "Reader profile not found." });
 
-            var book = db.Books.FirstOrDefault(b => b.BookId == bookId && b.IsActive);
-            if (book == null) return Json(new { success = false, message = "Book not found." });
-            if (book.AvailableCopies <= 0) return Json(new { success = false, message = "No copies available. Would you like to reserve?" });
+            // Change this line if you only want "Approved"/"Pending" statuses to count as actively unreturned:
+            bool hasUnreturned = db.Borrowings
+                .Any(b => b.ReaderId == reader.ReaderId &&
+                          (b.Status == "Pending" || b.Status == "Approved" || b.Status == "Accepted" || b.Status == "Overdue"));
 
-            // Check if already borrowed
-            var existing = db.Borrowings.FirstOrDefault(b =>
-                b.ReaderId == reader.ReaderId &&
-                (b.Status == "Approved" || b.Status == "Pending"));
-            var existingDetails = existing != null
-                ? db.BorrowingDetails.Where(d => d.BorrowingId == existing.BorrowingId && d.BookId == bookId).Any()
-                : false;
-            if (existingDetails) return Json(new { success = false, message = "You already have this book borrowed." });
+            if (hasUnreturned)
+                return Json(new { success = false, message = "Please return all current books before borrowing more." });
+
+            bool hasPending = db.Borrowings
+                .Any(b => b.ReaderId == reader.ReaderId && b.Status == "Pending");
+
+            if (hasPending)
+                return Json(new { success = false, message = "You already have a pending request awaiting librarian approval." });
 
             var borrowing = new Borrowing
             {
@@ -139,17 +125,182 @@ namespace MyLibrary.Controllers
             db.Borrowings.InsertOnSubmit(borrowing);
             db.SubmitChanges();
 
-            var detail = new BorrowingDetail
+            var addedTitles = new List<string>();
+            foreach (var id in bookIds)
             {
-                BorrowingId = borrowing.BorrowingId,
-                BookId = bookId
-            };
-            db.BorrowingDetails.InsertOnSubmit(detail);
+                var book = db.Books.FirstOrDefault(b => b.BookId == id && b.IsActive);
+                if (book == null || book.AvailableCopies <= 0) continue;
+
+                db.BorrowingDetails.InsertOnSubmit(new BorrowingDetail
+                {
+                    BorrowingId = borrowing.BorrowingId,
+                    BookId = id
+                });
+                addedTitles.Add(book.Title);
+            }
+
+            if (!addedTitles.Any())
+            {
+                db.Borrowings.DeleteOnSubmit(borrowing);
+                db.SubmitChanges();
+                return Json(new { success = false, message = "None of the selected books are available." });
+            }
+
+            db.SubmitChanges();
+            return Json(new { success = true, message = "Request sent for " + addedTitles.Count + " book(s). Due in 14 days." });
+        }
+        // ── 4. LIVE RETURN SYSTEM INTERACTION ──
+        [HttpPost]
+        public ActionResult ReturnBook(int borrowingId, int bookId)
+        {
+            var detail = db.BorrowingDetails.FirstOrDefault(d => d.BorrowingId == borrowingId && d.BookId == bookId);
+            if (detail == null) return Json(new { success = false, message = "Borrowing record entry not found." });
+            if (detail.ReturnedAt != null) return Json(new { success = false, message = "This book has already been marked returned." });
+
+            detail.ReturnedAt = DateTime.Now;
             db.SubmitChanges();
 
-            return Json(new { success = true, message = "Borrow request submitted! Due in 14 days." });
+            var siblings = db.BorrowingDetails.Where(d => d.BorrowingId == borrowingId).ToList();
+            bool allReturned = siblings.All(s => s.ReturnedAt != null);
+
+            if (allReturned)
+            {
+                var parent = db.Borrowings.FirstOrDefault(b => b.BorrowingId == borrowingId);
+                if (parent != null)
+                {
+                    parent.ReturnDate = DateTime.Now;
+                    parent.Status = "Returned";
+                    parent.UpdatedAt = DateTime.Now;
+                }
+                db.SubmitChanges();
+            }
+
+            return Json(new { success = true, message = "Item returned successfully!" });
         }
 
+        // ── 5. NOTIFICATIONS ──
+        public ActionResult Notifications()
+        {
+            int userId = int.Parse(User.Identity.Name);
+            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+
+            var notes = new List<ReaderNotificationItem>();
+
+            if (reader != null)
+            {
+                var dbNotifs = db.EmailNotifications
+                    .Where(n => n.UserId == userId && n.Status == "Sent")
+                    .OrderByDescending(n => n.CreatedAt)
+                    .Take(5).ToList();
+
+                foreach (var n in dbNotifs)
+                {
+                    notes.Add(new ReaderNotificationItem
+                    {
+                        Type = n.NotificationType == "FineNotification" ? "fine" : "new",
+                        Message = n.Subject + ": " + (n.Body.Length > 80 ? n.Body.Substring(0, 80) + "..." : n.Body),
+                        Icon = n.NotificationType == "FineNotification" ? "💰" : "📚"
+                    });
+                }
+            }
+
+            return PartialView("_Notifications", notes);
+        }
+        [HttpGet]
+        public JsonResult GetBorrowBasketBooks(List<int> ids)
+        {
+            if (ids == null || !ids.Any())
+                return Json(new object[] { }, JsonRequestBehavior.AllowGet);
+
+            var books = ids.Select(id =>
+            {
+                var book = db.Books.FirstOrDefault(b =>
+                    b.BookId == id &&
+                    b.IsActive);
+
+                if (book == null)
+                    return null;
+
+                var cover = db.BookImages
+                    .Where(i =>
+                        i.BookId == book.BookId &&
+                        i.IsPrimary)
+                    .Select(i => i.ImageUrl)
+                    .FirstOrDefault();
+
+                return new
+                {
+                    BookId = book.BookId,
+                    Title = book.Title,
+                    CoverUrl = cover,
+                    AvailableCopies = book.AvailableCopies
+                };
+            })
+            .Where(x => x != null)
+            .ToList();
+
+            return Json(books, JsonRequestBehavior.AllowGet);
+        }
+        // ── 6. MY FINES MANAGEMENT SYSTEM ──
+        // ── 6. MY FINES MANAGEMENT SYSTEM ──
+        [HttpGet]
+        public ActionResult MyFines()
+        {
+            // 1. Resolve user mapping context safely
+            int userId = int.Parse(User.Identity.Name);
+            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+            if (reader == null) return RedirectToAction("Index", "Guest");
+
+            // 2. Fetch outstanding/unpaid fines using your actual column 'PaymentStatus'
+            var unpaidFines = db.Fines
+                .Where(f => f.ReaderId == reader.ReaderId && f.PaymentStatus == "Unpaid")
+                .OrderByDescending(f => f.IssuedDate)
+                .ToList();
+
+            // 3. Map database items into your ViewModels layout
+            var fineItems = unpaidFines.Select(f => {
+                var detail = db.BorrowingDetails.FirstOrDefault(d => d.BorrowingId == f.BorrowingId);
+                var book = detail != null ? db.Books.FirstOrDefault(b => b.BookId == detail.BookId) : null;
+
+                // ── FIX: Read the actual FineType and Notes from the database ──
+                string infractionReason = "Overdue Book Return";
+
+                if (!string.IsNullOrEmpty(f.FineType))
+                {
+                    if (f.FineType == "Damaged")
+                    {
+                        // Use the notes from SQL if available (e.g., "Pages torn")
+                        infractionReason = !string.IsNullOrEmpty(f.Notes) ? $"Damaged ({f.Notes})" : "Damaged / Loose Copy Asset Deficit";
+                    }
+                    else if (f.FineType == "Lost")
+                    {
+                        infractionReason = !string.IsNullOrEmpty(f.Notes) ? $"Lost ({f.Notes})" : "Book reported lost";
+                    }
+                    else if (f.FineType == "Overdue")
+                    {
+                        infractionReason = "Overdue Book Return";
+                    }
+                }
+
+                return new FineDetailItem
+                {
+                    FineId = f.FineId.ToString(),
+                    IssuedDate = f.IssuedDate,
+                    Amount = f.Amount,
+                    Reason = infractionReason, // Now holds your real dynamic reason!
+                    BookTitle = book?.Title ?? "General Account Penalty"
+                };
+            }).ToList();
+
+            // 4. Construct complete parent view configuration model container
+            var viewModel = new ReaderFinesViewModel
+            {
+                FinesList = fineItems,
+                TotalFineAmount = fineItems.Sum(f => f.Amount)
+            };
+
+            return View(viewModel);
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing) db.Dispose();

@@ -1,0 +1,250 @@
+﻿@model MyLibrary.Models.ReaderBorrowFormViewModel
+@{
+    ViewBag.Title = "Confirm Your Borrowing Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="profile-page">
+    <div class="profile-header">
+        <div class="profile-avatar-wrap">
+            <img src="@(string.IsNullOrEmpty(Model.AvatarUrl) ? "/Content/images/default-avatar.png" : Model.AvatarUrl)"
+                 class="profile-avatar-large" id="avatar-preview" alt="Avatar" />
+        </div>
+        <div>
+            <h2>@Model.FullName</h2>
+            <p class="text-muted">@Model.Email</p>
+            <p class="text-muted" style="margin-top: 4px;">Reader Code: <strong>@Model.ReaderCode</strong></p>
+        </div>
+        <div class="profile-stats">
+            <div class="stat-box">
+                <span class="stat-num" id="form-item-counter">0 / 3</span>
+                <span class="stat-label">Books Selected</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-num" style="color: #3b6d11;">Active</span>
+                <span class="stat-label">Account Status</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-form">
+
+        <div class="settings-card">
+            <h3 style="font-family: var(--font); font-size: 16px; font-weight: 600;">Reader Confirmation Information</h3>
+
+            <div class="form-row" style="margin-bottom: 16px;">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="form-input" value="@Model.FullName" disabled style="opacity: 0.75;" />
+                </div>
+                <div class="form-group">
+                    <label>Reader Code</label>
+                    <input type="text" class="form-input" value="@Model.ReaderCode" disabled style="opacity: 0.75;" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" class="form-input" value="@Model.Email" disabled style="opacity: 0.75;" />
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" class="form-input" value="@Model.Phone" disabled style="opacity: 0.75;" />
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <h3 style="font-family: var(--font); font-size: 16px; font-weight: 600;">Schedule Timeline</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label style="color: #3b6d11; font-weight: 600;">Request Date</label>
+                    <input type="text" class="form-input" value="@Model.BorrowDate.ToString("yyyy-MM-dd")" disabled style="border-color: rgba(99,153,34,0.3); background: rgba(99,153,34,0.02);" />
+                </div>
+                <div class="form-group">
+                    <label style="color: #a32d2d; font-weight: 600;">Expected Return Due Date</label>
+                    <input type="text" class="form-input" value="@Model.DueDate.ToString("yyyy-MM-dd")" disabled style="border-color: rgba(163,45,45,0.3); background: rgba(163,45,45,0.02);" />
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <h3 style="font-family: var(--font); font-size: 16px; font-weight: 600;">Books to Borrow</h3>
+            <div id="cart-items-wrapper" style="display: flex; flex-direction: column; gap: 16px; margin-top: 12px;">
+                <p class="text-muted text-center" style="padding: 20px 0;">Reading items from temporary storage...</p>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <a href="@Url.Action("Index", "Guest")" class="btn-outline-sm" style="display: inline-flex; align-items: center; justify-content: center; text-align: center; padding: 10px 20px; border-radius: 8px; text-decoration: none;">
+                Cancel & Go Back
+            </a>
+            <button type="button" id="btnSubmitBorrow" class="btn-primary" style="max-width: 260px; margin-top: 0;" disabled>
+                🚀 Send Request to Librarian
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        var basketKey = 'borrowBasket';
+
+        document.addEventListener('DOMContentLoaded', function () {
+            renderBasket();
+        });
+
+        function renderBasket() {
+            var basket = JSON.parse(localStorage.getItem(basketKey) || '[]');
+            var wrapper = document.getElementById('cart-items-wrapper');
+            var counter = document.getElementById('form-item-counter');
+            var btn = document.getElementById('btnSubmitBorrow');
+
+            if (counter) counter.textContent = basket.length + ' / 3';
+
+            if (basket.length === 0) {
+                wrapper.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:13px;">🛒 Your temporary borrow form basket is currently empty.</div>';
+                if (btn) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.4';
+                }
+                return;
+            }
+
+            var queryString = basket.map(function(b) { return 'ids=' + b.id; }).join('&');
+            wrapper.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px;">🔄 Fetching fresh database status records...</div>';
+
+            fetch('@Url.Action("GetBorrowBasketBooks", "Reader")?' + queryString)
+                .then(function(r) { return r.json(); })
+                .then(function(books) {
+                    wrapper.innerHTML = '';
+
+                    if (!books || books.length === 0) {
+                        wrapper.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">No matching records identified.</div>';
+                        if (btn) btn.disabled = true;
+                        return;
+                    }
+
+                    books.forEach(function(book) {
+                        var div = document.createElement('div');
+                        div.setAttribute('data-id', book.BookId);
+                        div.style.cssText = 'display:flex;align-items:center;gap:16px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);margin-bottom:8px';
+                        div.innerHTML =
+                            '<div style="width:45px;height:60px;border-radius:4px;overflow:hidden;flex-shrink:0;background:var(--bg);border:1px solid var(--border)">' +
+                                (book.CoverUrl ? '<img src="' + book.CoverUrl + '" style="width:100%;height:100%;object-fit:cover" />' : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:20px">📖</div>') +
+                            '</div>' +
+                            '<div style="flex:1; min-width:0;">' +
+                                '<div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + book.Title + '</div>' +
+                                '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Inventory ID: #' + book.BookId + '</div>' +
+                            '</div>' +
+                            '<button type="button" onclick="removeFromBasket(' + book.BookId + ')" style="padding:5px 12px;background:rgba(226,75,74,0.1);color:#e24b4a;border:1px solid rgba(226,75,74,0.2);border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:all 0.15s;">✕ Remove</button>';
+                        wrapper.appendChild(div);
+                    });
+
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Basket fetch breakdown:', err);
+                    wrapper.innerHTML = '<div style="color:#e24b4a;padding:12px;font-size:12px;">Failed to link storage indexes to active inventory items.</div>';
+                });
+        }
+
+        function removeFromBasket(bookId) {
+            var basket = JSON.parse(localStorage.getItem(basketKey) || '[]');
+            basket = basket.filter(function (b) { return String(b.id) !== String(bookId); });
+            localStorage.setItem(basketKey, JSON.stringify(basket));
+
+            // Fires shared layout master navigation update hooks if present
+            if (window.updateBasketBadge && typeof window.updateBasketBadge === 'function') {
+                window.updateBasketBadge();
+            } else if (typeof updateBasketBadge === 'function') {
+                updateBasketBadge();
+            }
+            renderBasket();
+        }
+
+        // DATABASE SUBMISSION ACTION STRATEGY
+        document.getElementById('btnSubmitBorrow').addEventListener('click', function(e) {
+            e.preventDefault();
+
+            var basket = JSON.parse(localStorage.getItem(basketKey) || '[]');
+            var ids = basket.map(function(b) { return parseInt(b.id); });
+
+            if (ids.length === 0) {
+                alert('Your select tray configuration parameters returned empty!');
+                return;
+            }
+            if (ids.length > 3) {
+                alert('Administrative limits restrict concurrency allocations to 3 selections max.');
+                return;
+            }
+
+            if (!confirm('Confirm sending this formal loan allocation request to system administration? Return terms default to 14 standard days.')) {
+                return;
+            }
+
+            var btn = this;
+            btn.disabled = true;
+            btn.textContent = 'Writing to Data Logs...';
+            btn.style.opacity = '0.6';
+
+            // HYBRID RESOLUTION PAYLOAD:
+            // This sends structural requests via native Content-Type URL encoding parameters.
+            // This natively addresses traditional .NET MVC index routing model binder requirements.
+            var formPayload = new URLSearchParams();
+            ids.forEach(function(id) {
+                formPayload.append('bookIds', id);
+            });
+
+            fetch('@Url.Action("ConfirmBorrow", "Reader")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formPayload.toString()
+            })
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('HTTP network response returned status flag ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    // 1. Instantly flush current front-end cache states
+                    localStorage.removeItem(basketKey);
+
+                    // 2. Synchronize navigation status indicator systems
+                    if (window.updateBasketBadge && typeof window.updateBasketBadge === 'function') {
+                        window.updateBasketBadge();
+                    } else if (typeof updateBasketBadge === 'function') {
+                        updateBasketBadge();
+                    }
+
+                    // 3. Inform user and jump frames to structural pending logs page (image_49beed.png)
+                    alert('✓ System Record Created Successfully!\n' + (data.message || 'Your transaction request has been flagged as PENDING.'));
+                    window.location.href = '@Url.Action("MyBorrows", "Reader")';
+                } else {
+                    alert('❌ Operations Engine Rejection: ' + data.message);
+                    resetSubmitButton(btn);
+                }
+            })
+            .catch(function(error) {
+                console.error('Critical transactional pipeline block:', error);
+                alert('Database Synchronization Failure: Could not finalize the tracking transaction logs safely.');
+                resetSubmitButton(btn);
+            });
+        });
+
+        function resetSubmitButton(btnElement) {
+            btnElement.disabled = false;
+            btnElement.textContent = '🚀 Send Request to Librarian';
+            btnElement.style.opacity = '1';
+        }
+
+    </script>
+}

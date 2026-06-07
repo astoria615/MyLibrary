@@ -82,6 +82,7 @@ function toggleDarkMode(on) {
     document.body.classList.toggle('dark', on);
     localStorage.setItem('darkMode', on);
 }
+
 // Click outside to close detail panel
 document.addEventListener('click', function (e) {
     var panel = document.getElementById('detail-panel');
@@ -99,6 +100,7 @@ document.addEventListener('click', function (e) {
         });
     }
 });
+
 // ── NOTIFICATIONS ──
 function toggleNotifications() {
     var dd = document.getElementById('notif-dropdown');
@@ -130,18 +132,71 @@ document.addEventListener('click', function (e) {
     }
 });
 
-// ── BORROW ──
-function borrowBook(bookId) {
-    fetch('/Reader/Borrow', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: '__RequestVerificationToken=' + encodeURIComponent(
-            document.querySelector('input[name=__RequestVerificationToken]') ?
-                document.querySelector('input[name=__RequestVerificationToken]').value : ''
-        ) + '&bookId=' + bookId
-    })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            alert(data.message);
-        });
+// ── NEW ADVANCED MULTI-ITEM BORROW BASKET SYSTEM ──
+
+/**
+ * Validates constraints and adds a single book asset into the localStorage request collection
+ * @param {number} bookId - Primary identifier key of the targeted book
+ * @param {string} bookTitle - Text value name of the book
+ */
+function addAssetToBorrowForm(bookId, bookTitle) {
+    var basket = JSON.parse(localStorage.getItem('borrowBasket')) || [];
+
+    // Constraint Rule 1: Prevent duplicating the same exact item in the basket
+    var exists = basket.some(function (item) { return item.id === bookId; });
+    if (exists) {
+        alert("This item is already added to your current borrow request layout.");
+        return;
+    }
+
+    // Constraint Rule 2: Absolute system maximum capacity check (Limit: 3 books max)
+    if (basket.length >= 3) {
+        alert("System Limit: You can select a maximum of 3 books per single request form.");
+        return;
+    }
+
+    // Insert validated entity parameters into the array sequence
+    basket.push({ id: bookId, title: bookTitle });
+    localStorage.setItem('borrowBasket', JSON.stringify(basket));
+
+    // Refresh the master sidebar shell badge count UI bubble layout element instantly
+    if (typeof updateNavbarBasketBadge === "function") {
+        updateNavbarBasketBadge();
+    }
+
+    alert('"' + bookTitle + '" successfully added to your Borrow Form.');
 }
+function addToBasket(bookId, title) {
+    var basket = JSON.parse(localStorage.getItem('borrowBasket') || '[]');
+
+    // Check if already added
+    if (basket.some(function (b) { return b.id == bookId; })) {
+        alert('"' + title + '" is already in your borrow form.');
+        return;
+    }
+
+    // Max 3 books
+    if (basket.length >= 3) {
+        alert('You can only borrow up to 3 books at a time.');
+        return;
+    }
+
+    basket.push({ id: bookId, title: title });
+    localStorage.setItem('borrowBasket', JSON.stringify(basket));
+    updateBasketBadge();
+    alert('"' + title + '" added to your borrow form!');
+}
+
+function updateBasketBadge() {
+    var basket = JSON.parse(localStorage.getItem('borrowBasket') || '[]');
+    var badge = document.getElementById('basket-badge');
+    if (badge) {
+        badge.textContent = basket.length;
+        badge.style.display = basket.length > 0 ? 'inline-flex' : 'none';
+    }
+}
+
+// Init badge on page load
+document.addEventListener('DOMContentLoaded', function () {
+    updateBasketBadge();
+});

@@ -16,7 +16,10 @@ namespace MyLibrary.Models.ViewModels
 
         public bool RememberMe { get; set; }
     }
-
+    public class BorrowRequest
+    {
+        public List<int> BookIds { get; set; }
+    }
     public class RegisterViewModel
     {
         [Required]

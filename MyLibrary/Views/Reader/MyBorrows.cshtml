@@ -1,59 +1,232 @@
-﻿@model IEnumerable<MyLibrary.Models.ViewModels.BorrowHistoryItem>
+﻿@model List<MyLibrary.Models.ReaderBorrowHistoryItem>
 @{
-    ViewBag.Title = "My Borrows";
+    ViewBag.Title = "My Borrowing Tracking Dashboard";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<div class="borrows-page">
-    <h2>My Borrow History</h2>
+<div class="profile-page" style="max-width: 900px; margin: 0 auto; padding: 20px;">
 
-    @if (!Model.Any())
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+        <div>
+            <h3 style="font-family: var(--font); font-size: 16px; font-weight: 600; color: var(--text); margin: 0;">
+                📚 My Personal Borrow Records
+            </h3>
+        </div>
+        <a href="@Url.Action("Index", "Guest")" class="btn-primary"
+           style="text-decoration: none; padding: 6px 14px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; width: auto; margin-top: 0; white-space: nowrap;">
+            ➕ Borrow More Books
+        </a>
+    </div>
+
+    @if (Model == null || !Model.Any())
     {
-        <div class="empty-state">
-            <p>📚 You haven't borrowed any books yet.</p>
-            <a href="@Url.Action("BookList","Guest")" class="btn-primary">Browse Books</a>
+        <div class="settings-card" style="text-align: center; padding: 40px 20px;">
+            <h4 style="font-size: 14px; font-weight: 600; color: var(--text);">No history records available!</h4>
+            <p class="text-muted" style="font-size: 12px; margin-top: 8px; max-width: 450px; margin-left: auto; margin-right: auto;">
+                You have not submitted any physical asset loan orders to the administrative library system yet.
+            </p>
         </div>
     }
     else
     {
-        foreach (var borrow in Model)
-        {
-            <div class="borrow-card">
-                <div class="borrow-header">
-                    <div>
-                        <span class="borrow-id">#@borrow.BorrowingId</span>
-                        <span class="borrow-status status-@borrow.Status.ToLower()">@borrow.Status</span>
-                    </div>
-                    <div class="borrow-dates">
-                        <span>Borrowed: @borrow.BorrowDate.ToString("MMM dd, yyyy")</span>
-                        <span>Due: @borrow.DueDate.ToString("MMM dd, yyyy")</span>
-                        @if (borrow.ReturnDate.HasValue)
-                        {
-                            <span>Returned: @borrow.ReturnDate.Value.ToString("MMM dd, yyyy")</span>
-                        }
-                    </div>
-                </div>
-                <div class="borrow-books">
-                    @foreach (var book in borrow.Books)
-                    {
-                        <div class="borrow-book-item">
-                            <div class="borrow-cover">
-                                @if (!string.IsNullOrEmpty(book.CoverUrl))
-                                {<img src="@book.CoverUrl" alt="@book.Title" /> }
-                                else
-                                { <div class="cover-placeholder">📖</div>}
-                            </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            @foreach (var transaction in Model)
+            {
+                string statusText = transaction.Status;
+                string badgeStyle = "background: rgba(136,135,128,0.12); color: var(--text-muted);";
+
+                if (transaction.Status == "Pending")
+                {
+                    badgeStyle = "background: rgba(230, 140, 10, 0.12); color: #c27304;";
+                }
+                else if (transaction.Status == "Approved" || transaction.Status == "Accepted")
+                {
+                    badgeStyle = "background: rgba(99,153,34,0.15); color: #3b6d11;";
+                    statusText = "Accepted";
+                }
+                else if (transaction.Status == "Returned")
+                {
+                    badgeStyle = "background: rgba(26, 109, 191, 0.12); color: #1a6dbf;";
+                }
+                else if (transaction.Status == "Rejected")
+                {
+                    badgeStyle = "background: rgba(217, 83, 79, 0.12); color: #d9534f;";
+                }
+                else if (transaction.Status == "Overdue")
+                {
+                    badgeStyle = "background: rgba(217, 83, 79, 0.18); color: #d9534f; font-weight: bold;";
+                }
+
+                <div class="settings-card" style="padding: 0; overflow: hidden; border: 1px solid var(--border); transition: border-color 0.2s;">
+
+                    <div class="borrow-accordion-header" data-target="details-@transaction.BorrowingId"
+                         style="display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; cursor: pointer; background: var(--surface); transition: background 0.15s; user-select: none;">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <div style="font-size: 12px; color: var(--text-muted); transition: transform 0.2s;" class="accordion-arrow-icon">▶</div>
                             <div>
-                                <a href="#" onclick="selectBook(@book.BookId, 'list'); return false;" class="borrow-book-title">@book.Title</a>
-                                @if (!string.IsNullOrEmpty(book.Condition))
-                                {
-                                    <span class="borrow-condition">Condition: @book.Condition</span>
-                                }
+                                <span style="font-size: 13px; font-weight: 600; color: var(--text); display: block;">
+                                    Borrow Request ID: #@transaction.BorrowingId
+                                </span>
+                                <span class="text-muted" style="font-size: 11px; display: block; margin-top: 2px;">
+                                    Ordered On: <strong>@transaction.BorrowDate.ToString("MMM dd, yyyy")</strong>
+                                </span>
                             </div>
                         </div>
-                    }
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 10px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; @badgeStyle">
+                                @statusText
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="details-@transaction.BorrowingId" class="borrow-accordion-content" style="display: none; border-top: 1px solid var(--border); background: rgba(0,0,0,0.01); padding: 16px 20px;">
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px;">
+                            <div>
+                                <span class="text-muted" style="font-size: 11px; display: block; text-transform: uppercase;">Expected Return Deadline</span>
+                                <strong style="font-size: 12px; color: var(--text);">@transaction.DueDate.ToString("MMM dd, yyyy")</strong>
+                            </div>
+                            <div>
+                                <span class="text-muted" style="font-size: 11px; display: block; text-transform: uppercase;">System Return Verification</span>
+                                <strong style="font-size: 12px; color: @(transaction.ReturnDate.HasValue ? "#1a6dbf" : "var(--text-muted)");">
+                                    @(transaction.ReturnDate.HasValue ? transaction.ReturnDate.Value.ToString("MMM dd, yyyy HH:mm") : "Currently Retained")
+                                </strong>
+                            </div>
+                        </div>
+
+                        <h5 style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 10px; font-weight: 600; font-family: var(--font);">
+                            Included Book Inventory Copies (@transaction.Books.Count)
+                        </h5>
+
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            @foreach (var book in transaction.Books)
+                            {
+                                <div class="admin-row" id="book-row-@transaction.BorrowingId-@book.BookId" style="display: flex; align-items: center; gap: 14px; width: 100%; background: var(--surface); padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0;">
+
+                                    <div style="width: 45px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        @if (!string.IsNullOrEmpty(book.CoverUrl))
+                                        {
+                                            <img src="@book.CoverUrl" alt="Cover Image" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/Content/images/default-book.png'" />
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted" style="font-size: 8px; font-weight: bold; text-transform: uppercase;">No Cover</span>
+                                        }
+                                    </div>
+
+                                    <div style="flex: 1; min-width: 0;">
+                                        <span class="admin-row-title" style="font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">
+                                            @book.Title
+                                        </span>
+                                        <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
+                                            <span class="admin-row-sub" style="margin: 0; font-size: 11px;">Serial ID: #@book.BookId</span>
+                                            <span style="font-size: 10px; padding: 0px 4px; border-radius: 3px; border: 1px solid var(--border); background: var(--bg); color: var(--text-muted);">
+                                                Condition: @book.Condition
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; align-items: center; gap: 14px; flex-shrink: 0;">
+                                        <div class="return-status-cell" style="font-size: 12px;">
+                                            @if (book.ReturnedAt.HasValue)
+                                            {
+                                                <span style="color: #3b6d11; font-weight: 500;">
+                                                    Returned (@book.ReturnedAt.Value.ToString("yyyy-MM-dd"))
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span style="color: #d9534f; font-weight: 500;">
+                                                    Retained
+                                                </span>
+                                            }
+                                        </div>
+
+                                        <div class="action-button-cell">
+                                            @if (!book.ReturnedAt.HasValue && (transaction.Status == "Approved" || transaction.Status == "Accepted"))
+                                            {
+                                                <button type="button" class="btn-trigger-return"
+                                                        style="padding: 4px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: 500; background: rgba(26, 109, 191, 0.08); color: #1a6dbf; border: 1px solid rgba(26, 109, 191, 0.2);"
+                                                        data-borrowid="@transaction.BorrowingId" data-bookid="@book.BookId">
+                                                    Drop Return
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span style="font-size: 11px; color: var(--text-muted); opacity: 0.4; padding: 4px 8px;">Locked</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                </div>
+                            }
+                        </div>
+
+                    </div>
                 </div>
-            </div>
-        }
+            }
+        </div>
     }
 </div>
+
+@section scripts {
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // Interactive custom toggle event handler managing the view accordion panels
+            $('.borrow-accordion-header').click(function (e) {
+                if ($(e.target).closest('.btn-trigger-return').length) {
+                    return;
+                }
+
+                var headerRow = $(this);
+                var targetId = headerRow.attr('data-target');
+                var contentPanel = $('#' + targetId);
+                var arrowIcon = headerRow.find('.accordion-arrow-icon');
+
+                contentPanel.slideToggle(150, function() {
+                    if (contentPanel.is(':visible')) {
+                        headerRow.css('background', 'rgba(0,0,0,0.01)');
+                        arrowIcon.css('transform', 'rotate(90deg)').css('color', 'var(--accent)');
+                    } else {
+                        headerRow.css('background', 'var(--surface)');
+                        arrowIcon.css('transform', 'rotate(0deg)').css('color', 'var(--text-muted)');
+                    }
+                });
+            });
+
+            // Handle book return transactions seamlessly
+            $('.btn-trigger-return').click(function (e) {
+                e.stopPropagation();
+
+                var currentBtn = $(this);
+                var borrowingId = currentBtn.data('borrowid');
+                var bookId = currentBtn.data('bookid');
+
+                if (!confirm("Are you ready to submit this item back into tracking storage immediately?")) {
+                    return;
+                }
+
+                currentBtn.prop('disabled', true).text('Updating...').css('opacity', '0.6');
+
+                $.ajax({
+                    url: '@Url.Action("ReturnBook", "Reader")',
+                    type: 'POST',
+                    data: { borrowingId: borrowingId, bookId: bookId },
+                    success: function (data) {
+                        if (data.success) {
+                            alert(data.message);
+                            window.location.reload();
+                        } else {
+                            alert('Execution rejected: ' + data.message);
+                            currentBtn.prop('disabled', false).text('Drop Return').css('opacity', '1');
+                        }
+                    },
+                    error: function () {
+                        alert('An operational server communications error was caught.');
+                        currentBtn.prop('disabled', false).text('Drop Return').css('opacity', '1');
+                    }
+                });
+            });
+        });
+    </script>
+}

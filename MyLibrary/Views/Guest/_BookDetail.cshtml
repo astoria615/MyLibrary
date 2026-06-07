@@ -53,18 +53,27 @@
         {
             if (Model.AvailableCopies > 0)
             {
-                <button class="borrow-btn" onclick="borrowBook(@Model.BookId)" style="width: 100%;">Borrow now</button>
+                <button class="borrow-btn" onclick="addToBasket(@Model.BookId, '@Html.Raw(Model.Title.Replace("'", "\\'"))')">
+                    + Add to Borrow Form
+                </button>
+                <a href="@Url.Action("BorrowForm","Reader")" class="borrow-btn"
+                   style="display:block;text-align:center;text-decoration:none;margin-top:8px;
+                  background:rgba(255,255,255,.15);color:#fff">
+                    View Borrow Form
+                </a>
             }
             else
             {
-                <button class="borrow-btn" disabled style="width: 100%; background-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.4); cursor: not-allowed; border: 1px solid rgba(255,255,255,0.05);">
+                <button class="borrow-btn" disabled
+                        style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.4);cursor:not-allowed">
                     Out of Stock
                 </button>
             }
         }
         else
         {
-            <a href="@Url.Action("Login","Account",new{returnUrl=Request.Url.PathAndQuery})" class="borrow-btn" style="text-align:center; display:block; text-decoration:none; width: 100%;">
+            <a href="@Url.Action("Login","Account",new{returnUrl=Request.Url.PathAndQuery})"
+               class="borrow-btn" style="text-align:center;display:block;text-decoration:none">
                 Log in to Borrow
             </a>
         }
