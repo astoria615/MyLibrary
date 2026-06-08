@@ -61,7 +61,7 @@
                                 <span class="book-title">@book.Title</span>
                                 <span class="book-author">@book.AuthorName</span>
                                 <span class="book-category" style="display:block; font-size:12px; color:#777; margin-top:2px;">
-                                    @Model.CategoryName
+                                    @book.CategoryName
                                 </span>
                                 <span class="book-publisher" style="display:block; font-size:12px; color:#777;">
                                     @book.PublisherName
@@ -88,7 +88,7 @@
                                 onclick="selectBook(event, @book.BookId, 'list')" style="cursor:pointer">
                                 <td>@book.Title</td>
                                 <td>@book.AuthorName</td>
-                                <td>@Model.CategoryName</td>
+                                <td>@book.CategoryName</td>
                                 <td>@book.PublisherName</td>
                             </tr>
                         }
