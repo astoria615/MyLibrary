@@ -60,6 +60,12 @@
                             <div class="book-meta">
                                 <span class="book-title">@book.Title</span>
                                 <span class="book-author">@book.AuthorName</span>
+                                <span class="book-category" style="display:block; font-size:12px; color:#777; margin-top:2px;">
+                                    @Model.CategoryName
+                                </span>
+                                <span class="book-publisher" style="display:block; font-size:12px; color:#777;">
+                                    @book.PublisherName
+                                </span>
                             </div>
                         </div>
                     }
@@ -73,7 +79,7 @@
             {
                 <table class="book-list-table">
                     <thead>
-                        <tr><th>Title</th><th>Author</th><th>ISBN</th></tr>
+                        <tr><th>Title</th><th>Author</th><th>Category</th><th>Publisher</th></tr>
                     </thead>
                     <tbody>
                         @foreach (var book in Model.Books)
@@ -82,7 +88,8 @@
                                 onclick="selectBook(event, @book.BookId, 'list')" style="cursor:pointer">
                                 <td>@book.Title</td>
                                 <td>@book.AuthorName</td>
-                                <td>—</td>
+                                <td>@Model.CategoryName</td>
+                                <td>@book.PublisherName</td>
                             </tr>
                         }
                         @if (!Model.Books.Any())
@@ -133,177 +140,100 @@
         </section>
     </div>
 
-    <aside class="book-detail-panel" id="detail-panel" style="display:@(Model.SelectedBook != null ? "flex" : "none");">
-        <div id="detail-panel-content" style="width: 100%; height: 100%; display: flex; flex-direction: column;">
-            @if (Model.SelectedBook != null)
-            {
-                Html.RenderPartial("_BookDetail", Model.SelectedBook);
-            }
-        </div>
+    <aside class="book-detail-panel" id="detail-panel" style="display:none">
     </aside>
 </div>
 
 @section Scripts {
     <script>
-        // ADAPTED: Brought over global session state verification trackers from Index view
-        var IS_AUTHENTICATED = @(isUserLoggedIn ? "true" : "false");
-        var LOGIN_REDIRECT_URL = '@Url.Action("Login", "Account")';
+        function selectBook(e, bookId, mode) {
+            e.stopPropagation();
+            var panel = document.getElementById('detail-panel');
+            if (!panel) return;
 
-        function toggleSortMenu() {
-            var menu = document.getElementById("sort-menu");
-            if (menu.style.display === "none") {
-                menu.style.display = "block";
-            } else {
-                menu.style.display = "none";
-            }
-        }
-
-        // FIXED: Added event argument 'e' payload target reference here
-        function selectBook(e, bookId, viewMode) {
-            // Cut off bubble propagation chain so document listener doesn't hide it instantly
-            if (e && typeof e.stopPropagation === "function") {
-                e.stopPropagation();
-            }
-
-            var panel = document.getElementById("detail-panel");
-            var contentContainer = document.getElementById("detail-panel-content");
-            if (!panel || !contentContainer) return;
-
-            // ADAPTED: Added toggle behavior if the same book is clicked repeatedly
+            // Toggle off if same book
             if (panel.dataset.bookId == bookId && panel.style.display !== 'none') {
                 panel.style.display = 'none';
                 panel.dataset.bookId = '';
-                $('.book-card, .book-list-table tr').removeClass('selected');
+                document.querySelectorAll('.book-card, tbody tr').forEach(function (c) { c.classList.remove('selected'); });
                 return;
             }
 
-            $('.book-card, .book-list-table tr').removeClass('selected');
+            // Highlight selected
+            document.querySelectorAll('.book-card, tbody tr').forEach(function (c) { c.classList.remove('selected'); });
+            if (e.currentTarget) e.currentTarget.classList.add('selected');
 
-            // Highlight current targets properly
-            if (viewMode === 'grid') {
-                $(`.book-card[onclick*="${bookId}"]`).addClass('selected');
-            } else {
-                $(`.book-list-table tr[onclick*="${bookId}"]`).addClass('selected');
-            }
+            // Show loading
+            panel.style.display = 'flex';
+            panel.innerHTML = '<p style="color:#fff;opacity:.6;font-size:13px;margin:auto">Loading...</p>';
 
-            panel.style.display = "flex";
-            contentContainer.innerHTML = '<p style="color:#fff;opacity:0.6;font-size:13px;margin:auto">Loading...</p>';
-
-            // Using your stable jQuery .load method to populate the content wrapper layout container
-            $(contentContainer).load('@Url.Action("_BookDetail", "Guest")?id=' + bookId, function(response, status, xhr) {
-                if (status === "error") {
-                    console.log("Error loading book detail partial view: " + xhr.status + " " + xhr.statusText);
+            fetch('/Guest/BookDetail?id=' + bookId)
+                .then(function (r) {
+                    if (!r.ok) throw new Error('Not found');
+                    return r.text();
+                })
+                .then(function (html) {
+                    panel.innerHTML = html;
+                    panel.dataset.bookId = bookId;
+                    panel.scrollTop = 0;
+                    loadBookComments(bookId);
+                })
+                .catch(function () {
                     panel.style.display = 'none';
-                    return;
-                }
-                panel.dataset.bookId = bookId;
-                panel.scrollTop = 0;
-
-                loadBookComments(bookId);
-                // ADAPTED: Inject intercept logic onto the newly loaded partial view borrow buttons
-                hookDetailPanelBorrowButton(bookId);
-            });
-        }
-
-        // ADAPTED: Added button state intercept rules matching Index functionality
-        function hookDetailPanelBorrowButton(bookId) {
-            setTimeout(function() {
-                var detailBtn = document.querySelector('#detail-panel .btn-primary, #detail-panel button');
-                if (detailBtn) {
-                    var titleEl = document.querySelector('#detail-panel h2, #detail-panel .detail-title');
-                    var titleText = titleEl ? titleEl.textContent.trim() : "Selected Book";
-
-                    detailBtn.removeAttribute('onclick');
-
-                    detailBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        if (!IS_AUTHENTICATED) {
-                            alert("Authentication Required: Please sign in to add items to your borrow request.");
-                            window.location.href = LOGIN_REDIRECT_URL;
-                            return;
-                        }
-
-                        if (typeof addAssetToBorrowForm === "function") {
-                            addAssetToBorrowForm(bookId, titleText);
-                        }
-                    });
-                }
-            }, 150);
+                });
         }
 
         function loadBookComments(bookId) {
-            var reviewContainer = $('#reader-reviews-container');
+            var container = document.getElementById('reader-comments-list')
+                || document.getElementById('reader-reviews-container');
+            if (!container) return;
 
-            if(reviewContainer.length) {
-                reviewContainer.html('<p style="font-size: 12px; opacity: 0.7; padding: 4px 0;">Loading comments...</p>');
-
-                $.ajax({
-                    url: '@Url.Action("GetBookComments", "Guest")',
-                    type: 'GET',
-                    data: { id: bookId },
-                    success: function (comments) {
-                        reviewContainer.empty();
-
-                        if (!comments || comments.length === 0) {
-                            reviewContainer.html('<p style="font-size: 12px; opacity: 0.6; font-style: italic; padding: 4px 0;">No reviews yet for this book.</p>');
-                            return;
-                        }
-
-                        var html = '<div style="display: flex; flex-direction: column; gap: 12px; max-height: 220px; overflow-y: auto; padding-right: 4px;">';
-
-                        $.each(comments, function (index, rev) {
-                            var stars = '';
-                            for (var i = 1; i <= 5; i++) {
-                                stars += i <= rev.Rating ? '★' : '☆';
-                            }
-
-                            html += `
-                                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-                                        <strong style="font-size: 12px; color: #ffffff;">${rev.UserName}</strong>
-                                        <span style="color: #ffb703; font-size: 11px;">${stars}</span>
-                                    </div>
-                                    <p style="font-size: 12px; margin: 0; color: rgba(255,255,255,0.85); line-height: 1.4;">${rev.Text}</p>
-                                </div>
-                            `;
-                        });
-
-                        html += '</div>';
-                        reviewContainer.html(html);
-                    },
-                    error: function () {
-                        reviewContainer.html('<p style="font-size: 12px; color: #ff8888; padding: 4px 0;">Failed to load reviews.</p>');
+            fetch('/Guest/GetBookComments?id=' + bookId)
+                .then(function (r) { return r.json(); })
+                .then(function (comments) {
+                    if (!comments || comments.length === 0) {
+                        container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">No reviews yet.</p>';
+                        return;
                     }
+                    container.innerHTML = '';
+                    comments.forEach(function (c) {
+                        container.insertAdjacentHTML('beforeend',
+                            '<div style="border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:10px;margin-bottom:10px">' +
+                            '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+                            '<strong style="font-size:0.85rem;color:#fff">' + (c.UserName || 'Anonymous') + '</strong>' +
+                            '<span style="color:#fbbf24;font-size:0.75rem">★ ' + (c.Rating || 5) + '/5</span>' +
+                            '</div>' +
+                            '<p style="margin:0;font-size:0.85rem;opacity:0.8;line-height:1.4">' + (c.Text || '') + '</p>' +
+                            '</div>'
+                        );
+                    });
+                })
+                .catch(function () {
+                    if (container) container.innerHTML = '<p style="opacity:0.5;font-size:0.85rem;margin:0">Unable to load reviews.</p>';
                 });
-            }
         }
 
-        // ADAPTED: Refined outside listener to close the sidebar detail panel AND drop menus smoothly
+        function toggleSortMenu() {
+            var m = document.getElementById('sort-menu');
+            if (m) m.style.display = m.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Close panel and menus on outside click
         document.addEventListener('click', function (e) {
-            // 1. Handle closing Sort menu if clicked outside
-            if (!e.target.matches('.sort-btn')) {
-                var dropdowns = document.getElementsByClassName("sort-menu");
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.style.display === "block") {
-                        openDropdown.style.display = "none";
-                    }
-                }
+            // Close sort menu
+            var sortBtn = document.getElementById('sort-btn');
+            var sortMenu = document.getElementById('sort-menu');
+            if (sortMenu && sortBtn && !sortBtn.contains(e.target) && !sortMenu.contains(e.target)) {
+                sortMenu.style.display = 'none';
             }
 
-            // 2. Handle closing the sidebar details panel if clicked outside card/row selections completely
+            // Close detail panel
             var panel = document.getElementById('detail-panel');
             if (!panel || panel.style.display === 'none') return;
-
-            // Checked inside sidebar layout frame node lookup
-            var clickedInsidePanel = e.target.closest('#detail-panel');
-
-            if (!clickedInsidePanel) {
+            if (!e.target.closest('#detail-panel') && !e.target.closest('.book-card') && !e.target.closest('tbody tr')) {
                 panel.style.display = 'none';
                 panel.dataset.bookId = '';
-                $('.book-card, .book-list-table tr').removeClass('selected');
+                document.querySelectorAll('.book-card, tbody tr').forEach(function (c) { c.classList.remove('selected'); });
             }
         });
     </script>

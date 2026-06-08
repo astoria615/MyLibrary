@@ -24,6 +24,8 @@ namespace MyLibrary.Models.ViewModels
         public decimal AverageRating { get; set; }
         public int PublishYear { get; set; }
         public System.DateTime CreatedAt { get; set; }
+        public string CategoryName { get; set; }
+        public string PublisherName { get; set; }
     }
 
     public class BookDetailViewModel

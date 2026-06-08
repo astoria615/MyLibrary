@@ -257,6 +257,13 @@ namespace MyLibrary.Controllers
             var books = (from b in query
                          let cover = db.BookImages.Where(i => i.BookId == b.BookId && i.IsPrimary).Select(i => i.ImageUrl).FirstOrDefault()
                          let author = b.AuthorId != null ? db.Authors.Where(a => a.AuthorId == b.AuthorId).Select(a => a.FullName).FirstOrDefault() : "Unknown"
+
+                         // ADDED: Fetch Category Name
+                         let category = b.CategoryId != null ? db.Categories.Where(c => c.CategoryId == b.CategoryId).Select(c => c.CategoryName).FirstOrDefault() : "General"
+
+                         // ADDED: Fetch Publisher Name
+                         let publisher = b.PublisherId != null ? db.Publishers.Where(p => p.PublisherId == b.PublisherId).Select(p => p.PublisherName).FirstOrDefault() : "Unknown Publisher"
+
                          select new BookCardViewModel
                          {
                              BookId = b.BookId,
@@ -264,11 +271,15 @@ namespace MyLibrary.Controllers
                              AuthorName = author,
                              CoverUrl = cover,
                              AverageRating = b.AverageRating ?? 0,
-                             CreatedAt = b.CreatedAt
+                             CreatedAt = b.CreatedAt,
+
+                             // MAP THE NEW FIELDS HERE:
+                             CategoryName = category,
+                             PublisherName = publisher
                          })
-                         .Skip((page - 1) * pageSize)
-                         .Take(pageSize)
-                         .ToList();
+               .Skip((page - 1) * pageSize)
+               .Take(pageSize)
+               .ToList();
 
             BookDetailViewModel selected = null;
             if (selectedBookId.HasValue)
