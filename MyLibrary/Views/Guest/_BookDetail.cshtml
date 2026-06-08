@@ -1,4 +1,110 @@
-﻿@model MyLibrary.Models.ViewModels.BookDetailViewModel
+﻿@using System.Web
+@model MyLibrary.Models.ViewModels.BookDetailViewModel
+
+<style>
+    .preview-action-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        text-decoration: none;
+        margin-top: 8px;
+        padding: 14px 18px;
+        border: none;
+        border-radius: 28px;
+        font-weight: 700;
+        font-size: 15px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .read-preview-btn {
+        background: #fff7ed;
+        color: #b45309;
+    }
+
+        .read-preview-btn:hover {
+            background: #ffedd5;
+        }
+
+    .view-ebook-btn {
+        background: rgba(255,255,255,.15);
+        color: #fff;
+    }
+
+        .view-ebook-btn:hover {
+            background: rgba(255,255,255,.25);
+        }
+
+    .book-preview-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 99999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .book-preview-box {
+        background: #ffffff;
+        color: #222;
+        width: min(720px, 95vw);
+        max-height: 82vh;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+
+    .book-preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #ddd;
+    }
+
+        .book-preview-header h3 {
+            margin: 0;
+            font-size: 20px;
+            color: #111;
+        }
+
+    .book-preview-close {
+        border: none;
+        background: transparent;
+        font-size: 30px;
+        cursor: pointer;
+        line-height: 1;
+        color: #333;
+    }
+
+    .book-preview-body {
+        padding: 20px;
+        line-height: 1.7;
+        overflow-y: auto;
+        max-height: 65vh;
+        font-size: 15px;
+        color: #333;
+    }
+
+    .book-preview-footer {
+        padding: 14px 20px;
+        border-top: 1px solid #ddd;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+        .book-preview-footer a {
+            padding: 10px 18px;
+            border-radius: 20px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+</style>
 
 <div class="detail-cover-img">
     @if (!string.IsNullOrEmpty(Model.CoverUrl))
@@ -18,12 +124,20 @@
     <div class="detail-stars" style="display: flex; align-items: center; gap: 4px;">
         @for (int i = 1; i <= 5; i++)
         {
-            <span class="star @(i <= (int)Math.Round((double)Model.AverageRating) ? "filled" : "")" style="color: @(i <= (int)Math.Round((double)Model.AverageRating) ? "#ffb400" : "rgba(255,255,255,0.2)"); font-size: 1.2rem;">&#9733;</span>
+            <span class="star @(i <= (int)Math.Round((double)Model.AverageRating) ? "filled" : "")"
+                  style="color: @(i <= (int)Math.Round((double)Model.AverageRating) ? "#ffb400" : "rgba(255,255,255,0.2)"); font-size: 1.2rem;">
+                &#9733;
+            </span>
         }
-        <span class="detail-reviews" style="margin-left: 8px; opacity: 0.5; font-size: 0.9rem;"> (@Model.TotalReviews reviews)</span>
+
+        <span class="detail-reviews" style="margin-left: 8px; opacity: 0.5; font-size: 0.9rem;">
+            (@Model.TotalReviews reviews)
+        </span>
     </div>
 
-    <p class="detail-desc" style="margin: 0; line-height: 1.6; font-size: 0.95rem; opacity: 0.85;">@Model.Description</p>
+    <p class="detail-desc" style="margin: 0; line-height: 1.6; font-size: 0.95rem; opacity: 0.85;">
+        @Model.Description
+    </p>
 
     <div class="detail-meta-grid" style="display: grid; grid-template-columns: auto 1fr; row-gap: 10px; column-gap: 16px; font-size: 0.9rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; margin-top: 6px;">
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">ISBN</span><span>@(Model.ISBN ?? "—")</span>
@@ -32,6 +146,7 @@
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Pages</span><span>@(Model.PageCount?.ToString() ?? "—")</span>
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Publisher</span><span>@(Model.PublisherName ?? "—")</span>
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Published</span><span>@(Model.PublishYear?.ToString() ?? "—")</span>
+
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Available</span>
         <span>
             @if (Model.AvailableCopies > 0)
@@ -57,9 +172,10 @@
                 <button class="borrow-btn" onclick="addToBasket(@Model.BookId, '@Html.Raw(Model.Title.Replace("'", "\\'"))')">
                     + Add to Borrow Form
                 </button>
+
                 <a href="@Url.Action("BorrowForm","Reader")" class="borrow-btn"
                    style="display:block;text-align:center;text-decoration:none;margin-top:8px;
-                  background:rgba(255,255,255,.15);color:#fff">
+                          background:rgba(255,255,255,.15);color:#fff">
                     View Borrow Form
                 </a>
             }
@@ -78,6 +194,24 @@
                 Log in to Borrow
             </a>
         }
+
+        @if (!string.IsNullOrWhiteSpace(Model.PreviewContent))
+        {
+            <button type="button"
+                    class="preview-action-btn read-preview-btn"
+                    onclick="openBookPreviewModal()">
+                📖 Read Preview
+            </button>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Model.EbookUrl))
+        {
+            <a href="@Url.Content(Model.EbookUrl)"
+               target="_blank"
+               class="preview-action-btn view-ebook-btn">
+                📄 View E-book
+            </a>
+        }
     </div>
 
     <div class="reviews-section" style="margin-top: 20px;">
@@ -90,3 +224,52 @@
         </div>
     </div>
 </div>
+
+@if (!string.IsNullOrWhiteSpace(Model.PreviewContent))
+{
+    <div id="bookPreviewModal" class="book-preview-modal">
+        <div class="book-preview-box">
+            <div class="book-preview-header">
+                <h3>@Model.Title - Preview</h3>
+                <button type="button" class="book-preview-close" onclick="closeBookPreviewModal()">×</button>
+            </div>
+
+            <div class="book-preview-body">
+                @Html.Raw(HttpUtility.HtmlEncode(Model.PreviewContent).Replace("\n", "<br />"))
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.EbookUrl))
+            {
+                <div class="book-preview-footer">
+                    <a href="@Url.Content(Model.EbookUrl)" target="_blank">Open E-book</a>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<script>
+    function openBookPreviewModal() {
+        var modal = document.getElementById('bookPreviewModal');
+
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeBookPreviewModal() {
+        var modal = document.getElementById('bookPreviewModal');
+
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('click', function (e) {
+        var modal = document.getElementById('bookPreviewModal');
+
+        if (modal && e.target === modal) {
+            closeBookPreviewModal();
+        }
+    });
+</script>

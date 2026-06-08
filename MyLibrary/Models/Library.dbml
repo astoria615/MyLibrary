@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?><Database Name="LibraryDb" Class="LibraryDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+﻿<?xml version="1.0" encoding="utf-8"?><Database Name="LibraryDB" Class="LibraryDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
   <Table Name="dbo.Author" Member="Authors">
     <Type Name="Author">
       <Column Name="AuthorId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
@@ -10,38 +10,6 @@
       <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
       <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
       <Association Name="Author_Book" Member="Books" ThisKey="AuthorId" OtherKey="AuthorId" Type="Book" />
-    </Type>
-  </Table>
-  <Table Name="dbo.Book" Member="Books">
-    <Type Name="Book">
-      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
-      <Column Name="ISBN" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
-      <Column Name="Title" Type="System.String" DbType="NVarChar(300) NOT NULL" CanBeNull="false" />
-      <Column Name="AuthorId" Type="System.Int32" DbType="Int" CanBeNull="true" />
-      <Column Name="CategoryId" Type="System.Int32" DbType="Int" CanBeNull="true" />
-      <Column Name="PublisherId" Type="System.Int32" DbType="Int" CanBeNull="true" />
-      <Column Name="PublishYear" Type="System.Int32" DbType="Int" CanBeNull="true" />
-      <Column Name="TotalCopies" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
-      <Column Name="AvailableCopies" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
-      <Column Name="Language" Type="System.String" DbType="NVarChar(50)" CanBeNull="true" />
-      <Column Name="PageCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
-      <Column Name="Description" Type="System.String" DbType="NVarChar(2000)" CanBeNull="true" />
-      <Column Name="ShelfLocation" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
-      <Column Name="EbookUrl" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
-      <Column Name="IsFeatured" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
-      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
-      <Column Name="AverageRating" Type="System.Decimal" DbType="Decimal(3,2)" CanBeNull="true" />
-      <Column Name="TotalReviews" Type="System.Int32" DbType="Int" CanBeNull="true" />
-      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
-      <Column Name="UpdatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
-      <Association Name="Book_BookImage" Member="BookImages" ThisKey="BookId" OtherKey="BookId" Type="BookImage" />
-      <Association Name="Book_BookStatus" Member="BookStatus" ThisKey="BookId" OtherKey="BookId" Type="BookStatus" />
-      <Association Name="Book_BorrowingDetail" Member="BorrowingDetails" ThisKey="BookId" OtherKey="BookId" Type="BorrowingDetail" />
-      <Association Name="Book_Reservation" Member="Reservations" ThisKey="BookId" OtherKey="BookId" Type="Reservation" />
-      <Association Name="Book_Review" Member="Reviews" ThisKey="BookId" OtherKey="BookId" Type="Review" />
-      <Association Name="Author_Book" Member="Author" ThisKey="AuthorId" OtherKey="AuthorId" Type="Author" IsForeignKey="true" />
-      <Association Name="Category_Book" Member="Category" ThisKey="CategoryId" OtherKey="CategoryId" Type="Category" IsForeignKey="true" />
-      <Association Name="Publisher_Book" Member="Publisher" ThisKey="PublisherId" OtherKey="PublisherId" Type="Publisher" IsForeignKey="true" />
     </Type>
   </Table>
   <Table Name="dbo.BookImage" Member="BookImages">
@@ -91,8 +59,8 @@
       <Column Name="ReturnedAt" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
       <Column Name="Condition" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
       <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
-      <Association Name="Book_BorrowingDetail" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
       <Association Name="Borrowing_BorrowingDetail" Member="Borrowing" ThisKey="BorrowingId" OtherKey="BorrowingId" Type="Borrowing" IsForeignKey="true" />
+      <Association Name="Book_BorrowingDetail" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
     </Type>
   </Table>
   <Table Name="dbo.Category" Member="Categories">
@@ -191,8 +159,8 @@
       <Column Name="ExpiryDate" Type="System.DateTime" DbType="DateTime" CanBeNull="true" />
       <Column Name="Status" Type="System.String" DbType="NVarChar(20) NOT NULL" CanBeNull="false" />
       <Column Name="Notes" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
-      <Association Name="Book_Reservation" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
       <Association Name="Reader_Reservation" Member="Reader" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reader" IsForeignKey="true" />
+      <Association Name="Book_Reservation" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
     </Type>
   </Table>
   <Table Name="dbo.Review" Member="Reviews">
@@ -204,8 +172,8 @@
       <Column Name="Comment" Type="System.String" DbType="NVarChar(1000)" CanBeNull="true" />
       <Column Name="ReviewDate" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
       <Column Name="IsVisible" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
-      <Association Name="Book_Review" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
       <Association Name="Reader_Review" Member="Reader" ThisKey="ReaderId" OtherKey="ReaderId" Type="Reader" IsForeignKey="true" />
+      <Association Name="Book_Review" Member="Book" ThisKey="BookId" OtherKey="BookId" Type="Book" IsForeignKey="true" />
     </Type>
   </Table>
   <Table Name="dbo.UserAccount" Member="UserAccounts">
@@ -231,6 +199,39 @@
       <Association Name="UserAccount_EmailNotification" Member="EmailNotifications" ThisKey="UserId" OtherKey="UserId" Type="EmailNotification" />
       <Association Name="UserAccount_Librarian" Member="Librarians" ThisKey="UserId" OtherKey="UserId" Type="Librarian" />
       <Association Name="UserAccount_Reader" Member="Readers" ThisKey="UserId" OtherKey="UserId" Type="Reader" />
+    </Type>
+  </Table>
+  <Table Name="dbo.Book" Member="Books">
+    <Type Name="Book">
+      <Column Name="BookId" Type="System.Int32" DbType="Int NOT NULL IDENTITY" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="ISBN" Type="System.String" DbType="NVarChar(20)" CanBeNull="true" />
+      <Column Name="Title" Type="System.String" DbType="NVarChar(300) NOT NULL" CanBeNull="false" />
+      <Column Name="AuthorId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="CategoryId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="PublisherId" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="PublishYear" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="TotalCopies" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="AvailableCopies" Type="System.Int32" DbType="Int NOT NULL" CanBeNull="false" />
+      <Column Name="Language" Type="System.String" DbType="NVarChar(50)" CanBeNull="true" />
+      <Column Name="PageCount" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="Description" Type="System.String" DbType="NVarChar(2000)" CanBeNull="true" />
+      <Column Name="ShelfLocation" Type="System.String" DbType="NVarChar(100)" CanBeNull="true" />
+      <Column Name="EbookUrl" Type="System.String" DbType="NVarChar(500)" CanBeNull="true" />
+      <Column Name="IsFeatured" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="IsActive" Type="System.Boolean" DbType="Bit NOT NULL" CanBeNull="false" />
+      <Column Name="AverageRating" Type="System.Decimal" DbType="Decimal(3,2)" CanBeNull="true" />
+      <Column Name="TotalReviews" Type="System.Int32" DbType="Int" CanBeNull="true" />
+      <Column Name="CreatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="UpdatedAt" Type="System.DateTime" DbType="DateTime NOT NULL" CanBeNull="false" />
+      <Column Name="PreviewContent" Type="System.String" DbType="NVarChar(MAX)" CanBeNull="true" />
+      <Association Name="Book_BookImage" Member="BookImages" ThisKey="BookId" OtherKey="BookId" Type="BookImage" />
+      <Association Name="Book_BookStatus" Member="BookStatus" ThisKey="BookId" OtherKey="BookId" Type="BookStatus" />
+      <Association Name="Book_BorrowingDetail" Member="BorrowingDetails" ThisKey="BookId" OtherKey="BookId" Type="BorrowingDetail" />
+      <Association Name="Book_Reservation" Member="Reservations" ThisKey="BookId" OtherKey="BookId" Type="Reservation" />
+      <Association Name="Book_Review" Member="Reviews" ThisKey="BookId" OtherKey="BookId" Type="Review" />
+      <Association Name="Author_Book" Member="Author" ThisKey="AuthorId" OtherKey="AuthorId" Type="Author" IsForeignKey="true" />
+      <Association Name="Category_Book" Member="Category" ThisKey="CategoryId" OtherKey="CategoryId" Type="Category" IsForeignKey="true" />
+      <Association Name="Publisher_Book" Member="Publisher" ThisKey="PublisherId" OtherKey="PublisherId" Type="Publisher" IsForeignKey="true" />
     </Type>
   </Table>
 </Database>

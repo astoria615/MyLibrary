@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Web;
 
 namespace MyLibrary.Models.ViewModels
 {
@@ -16,10 +17,12 @@ namespace MyLibrary.Models.ViewModels
 
         public bool RememberMe { get; set; }
     }
+
     public class BorrowRequest
     {
         public List<int> BookIds { get; set; }
     }
+
     public class RegisterViewModel
     {
         [Required]
@@ -51,6 +54,7 @@ namespace MyLibrary.Models.ViewModels
 
         [Required]
         public string FullName { get; set; }
+
         public string Phone { get; set; }
         public string Address { get; set; }
         public string AvatarUrl { get; set; }
@@ -77,7 +81,7 @@ namespace MyLibrary.Models.ViewModels
         public DateTime DueDate { get; set; }
         public DateTime? ReturnDate { get; set; }
         public string Status { get; set; }
-        public System.Collections.Generic.List<BorrowBookItem> Books { get; set; }
+        public List<BorrowBookItem> Books { get; set; }
     }
 
     public class BorrowBookItem
@@ -88,6 +92,7 @@ namespace MyLibrary.Models.ViewModels
         public string Condition { get; set; }
         public DateTime? ReturnedAt { get; set; }
     }
+
     public class LibrarianDashboardViewModel
     {
         public int TotalBooks { get; set; }
@@ -108,16 +113,19 @@ namespace MyLibrary.Models.ViewModels
         public DateTime? ReturnDate { get; set; }
         public List<BorrowBookItem> Books { get; set; }
     }
+
     public class FineManagementViewModel
     {
         public List<FineItem> Fines { get; set; }
         public List<BorrowActivityItem> OverdueBorrows { get; set; }
     }
+
     public class ReaderDropdownItem
     {
         public int ReaderId { get; set; }
         public string FullName { get; set; }
     }
+
     public class FineItem
     {
         public int FineId { get; set; }
@@ -130,12 +138,14 @@ namespace MyLibrary.Models.ViewModels
         public int BorrowingId { get; set; }
         public int ReaderId { get; set; }
     }
+
     public class NotificationItem
     {
         public string Type { get; set; }
         public string Message { get; set; }
         public string Icon { get; set; }
     }
+
     public class AdminDashboardViewModel
     {
         public int TotalBooks { get; set; }
@@ -164,20 +174,37 @@ namespace MyLibrary.Models.ViewModels
     public class AdminBookEditViewModel
     {
         public int BookId { get; set; }
+
         public string ISBN { get; set; }
+
         [Required]
         public string Title { get; set; }
+
         public int? AuthorId { get; set; }
         public int? CategoryId { get; set; }
         public int? PublisherId { get; set; }
+
         public int? PublishYear { get; set; }
+
         public int TotalCopies { get; set; } = 1;
+
         public string Language { get; set; } = "English";
+
         public int? PageCount { get; set; }
+
         public string Description { get; set; }
+
         public string ShelfLocation { get; set; }
+
         public bool IsFeatured { get; set; }
+
         public string CoverUrl { get; set; }
+
+        public string PreviewContent { get; set; }
+
+        public string EbookUrl { get; set; }
+
+        public HttpPostedFileBase EbookFile { get; set; }
     }
 
     public class AdminReaderItem
@@ -230,6 +257,7 @@ namespace MyLibrary.Models.ViewModels
         public string Comment { get; set; }
         public DateTime ReviewDate { get; set; }
     }
+
     public class ReviewStatsViewModel
     {
         public int TotalReviews { get; set; }
@@ -241,4 +269,4 @@ namespace MyLibrary.Models.ViewModels
         public int Star1 { get; set; }
         public List<AdminReviewItem> Reviews { get; set; }
     }
-}   
+}

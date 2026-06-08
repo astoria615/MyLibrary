@@ -2,7 +2,9 @@
 using MyLibrary.Models.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
 
@@ -67,6 +69,79 @@ namespace MyLibrary.Controllers
             if (!IsAdmin()) return RedirectToLogin();
 
             RefreshSession();
+
+            DateTime now = DateTime.Now;
+            DateTime firstDayThisMonth = new DateTime(now.Year, now.Month, 1);
+
+            DateTime startMonth;
+
+            if (db.Borrowings.Any())
+            {
+                DateTime firstBorrowDate = db.Borrowings.Min(b => b.BorrowDate);
+                startMonth = new DateTime(firstBorrowDate.Year, firstBorrowDate.Month, 1);
+            }
+            else
+            {
+                startMonth = firstDayThisMonth;
+            }
+
+            var rawBorrowings = db.Borrowings
+                .ToList()
+                .GroupBy(b => new { b.BorrowDate.Year, b.BorrowDate.Month })
+                .Select(g => new
+                {
+                    Year = g.Key.Year,
+                    MonthNumber = g.Key.Month,
+                    Count = g.Count()
+                })
+                .ToList();
+
+            var borrowingChartLabels = new List<string>();
+            var borrowingChartData = new List<int>();
+
+            DateTime loopMonth = startMonth;
+
+            while (loopMonth <= firstDayThisMonth)
+            {
+                var found = rawBorrowings.FirstOrDefault(x =>
+                    x.Year == loopMonth.Year &&
+                    x.MonthNumber == loopMonth.Month);
+
+                borrowingChartLabels.Add(loopMonth.ToString("MM/yyyy"));
+                borrowingChartData.Add(found != null ? found.Count : 0);
+
+                loopMonth = loopMonth.AddMonths(1);
+            }
+
+            ViewBag.BorrowingChartLabels = borrowingChartLabels;
+            ViewBag.BorrowingChartData = borrowingChartData;
+
+            ViewBag.ActiveReaders = (from r in db.Readers
+                                     join u in db.UserAccounts on r.UserId equals u.UserId
+                                     where u.IsActive
+                                     select r).Count();
+
+            ViewBag.InactiveReaders = (from r in db.Readers
+                                       join u in db.UserAccounts on r.UserId equals u.UserId
+                                       where !u.IsActive
+                                       select r).Count();
+
+            ViewBag.NewReadersThisMonth = db.Readers.Count(r => r.MembershipDate >= firstDayThisMonth);
+
+            var topBorrowedBooks = (from bd in db.BorrowingDetails
+                                    join b in db.Books on bd.BookId equals b.BookId
+                                    group bd by new { b.BookId, b.Title } into g
+                                    orderby g.Count() descending
+                                    select new
+                                    {
+                                        Title = g.Key.Title,
+                                        BorrowCount = g.Count()
+                                    })
+                                    .Take(10)
+                                    .ToList();
+
+            ViewBag.TopBorrowedBookLabels = topBorrowedBooks.Select(x => x.Title).ToList();
+            ViewBag.TopBorrowedBookData = topBorrowedBooks.Select(x => x.BorrowCount).ToList();
 
             var vm = new AdminDashboardViewModel
             {
@@ -211,7 +286,9 @@ namespace MyLibrary.Controllers
             ViewBag.AuthorName = "";
             ViewBag.CategoryName = "";
             ViewBag.PublisherName = "";
+
             PopulateBookDropdowns();
+
             return View(new AdminBookEditViewModel());
         }
 
@@ -227,6 +304,8 @@ namespace MyLibrary.Controllers
                 return View(model);
             }
 
+            string ebookUrl = SaveEbookFile(model.EbookFile);
+
             var book = new Book
             {
                 ISBN = model.ISBN,
@@ -241,6 +320,8 @@ namespace MyLibrary.Controllers
                 PageCount = model.PageCount,
                 Description = model.Description,
                 ShelfLocation = model.ShelfLocation,
+                PreviewContent = model.PreviewContent,
+                EbookUrl = !string.IsNullOrEmpty(ebookUrl) ? ebookUrl : model.EbookUrl,
                 IsFeatured = model.IsFeatured,
                 IsActive = true,
                 AverageRating = 0,
@@ -283,7 +364,9 @@ namespace MyLibrary.Controllers
         public ActionResult EditBook(int id)
         {
             if (!IsAdmin()) return RedirectToLogin();
+
             var book = db.Books.FirstOrDefault(b => b.BookId == id);
+
             if (book == null)
                 return HttpNotFound();
 
@@ -307,17 +390,22 @@ namespace MyLibrary.Controllers
                 Description = book.Description,
                 ShelfLocation = book.ShelfLocation,
                 IsFeatured = book.IsFeatured,
-                CoverUrl = cover
+                CoverUrl = cover,
+
+                PreviewContent = book.PreviewContent,
+                EbookUrl = book.EbookUrl
             };
 
             var author = book.AuthorId != null ? db.Authors.FirstOrDefault(a => a.AuthorId == book.AuthorId) : null;
             var category = book.CategoryId != null ? db.Categories.FirstOrDefault(c => c.CategoryId == book.CategoryId) : null;
             var publisher = book.PublisherId != null ? db.Publishers.FirstOrDefault(p => p.PublisherId == book.PublisherId) : null;
+
             ViewBag.AuthorName = author != null ? author.FullName : "";
             ViewBag.CategoryName = category != null ? category.CategoryName : "";
             ViewBag.PublisherName = publisher != null ? publisher.PublisherName : "";
 
             PopulateBookDropdowns();
+
             return View(vm);
         }
 
@@ -350,6 +438,20 @@ namespace MyLibrary.Controllers
             book.Description = model.Description;
             book.ShelfLocation = model.ShelfLocation;
             book.IsFeatured = model.IsFeatured;
+
+            book.PreviewContent = model.PreviewContent;
+
+            string ebookUrl = SaveEbookFile(model.EbookFile);
+
+            if (!string.IsNullOrEmpty(ebookUrl))
+            {
+                book.EbookUrl = ebookUrl;
+            }
+            else
+            {
+                book.EbookUrl = model.EbookUrl;
+            }
+
             book.UpdatedAt = DateTime.Now;
 
             if (!string.IsNullOrEmpty(model.CoverUrl))
@@ -476,9 +578,12 @@ namespace MyLibrary.Controllers
             if (!IsAdmin())
                 return Json(new { success = false, message = "Unauthorized." });
 
+            if (string.IsNullOrWhiteSpace(name))
+                return Json(new { success = false, message = "Category name is required." });
+
             db.Categories.InsertOnSubmit(new Category
             {
-                CategoryName = name,
+                CategoryName = name.Trim(),
                 Description = description,
                 IsActive = true,
                 CreatedAt = DateTime.Now
@@ -495,12 +600,15 @@ namespace MyLibrary.Controllers
             if (!IsAdmin())
                 return Json(new { success = false, message = "Unauthorized." });
 
+            if (string.IsNullOrWhiteSpace(name))
+                return Json(new { success = false, message = "Category name is required." });
+
             var cat = db.Categories.FirstOrDefault(c => c.CategoryId == id);
 
             if (cat == null)
                 return Json(new { success = false, message = "Category not found." });
 
-            cat.CategoryName = name;
+            cat.CategoryName = name.Trim();
             cat.Description = description;
 
             db.SubmitChanges();
@@ -819,7 +927,6 @@ namespace MyLibrary.Controllers
         {
             if (!IsAdmin()) return RedirectToAction("Login", "Account");
 
-            // Step 1: fetch flat data with joins only
             var baseReviews = (from r in db.Reviews
                                where r.IsVisible
                                join rd in db.Readers on r.ReaderId equals rd.ReaderId into jr
@@ -839,7 +946,6 @@ namespace MyLibrary.Controllers
                                    ReaderName = u != null ? u.FullName : "Unknown"
                                }).ToList();
 
-            // Step 2: map in memory
             var reviews = baseReviews.Select(r => new AdminReviewItem
             {
                 ReviewId = r.ReviewId,
@@ -850,7 +956,6 @@ namespace MyLibrary.Controllers
                 ReviewDate = r.ReviewDate
             }).ToList();
 
-            // Step 3: build stats
             var stats = new ReviewStatsViewModel
             {
                 TotalReviews = reviews.Count,
@@ -884,13 +989,6 @@ namespace MyLibrary.Controllers
             return Json(new { success = true, message = "Review removed." });
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-                db.Dispose();
-
-            base.Dispose(disposing);
-        }
         // ── SEARCH AUTHORS ──
         public ActionResult SearchAuthors(string q)
         {
@@ -898,7 +996,9 @@ namespace MyLibrary.Controllers
                 .Where(a => a.IsActive && a.FullName.Contains(q))
                 .ToList()
                 .Select(a => new { AuthorId = a.AuthorId, FullName = a.FullName })
-                .Take(8).ToList();
+                .Take(8)
+                .ToList();
+
             return Json(results, JsonRequestBehavior.AllowGet);
         }
 
@@ -908,7 +1008,9 @@ namespace MyLibrary.Controllers
                 .Where(c => c.IsActive && c.CategoryName.Contains(q))
                 .ToList()
                 .Select(c => new { CategoryId = c.CategoryId, CategoryName = c.CategoryName })
-                .Take(8).ToList();
+                .Take(8)
+                .ToList();
+
             return Json(results, JsonRequestBehavior.AllowGet);
         }
 
@@ -918,16 +1020,20 @@ namespace MyLibrary.Controllers
                 .Where(p => p.IsActive && p.PublisherName.Contains(q))
                 .ToList()
                 .Select(p => new { PublisherId = p.PublisherId, PublisherName = p.PublisherName })
-                .Take(8).ToList();
+                .Take(8)
+                .ToList();
+
             return Json(results, JsonRequestBehavior.AllowGet);
         }
 
-        // ── CREATE NEW AUTHOR IF NOT EXISTS ──
         [HttpPost]
         public ActionResult GetOrCreateAuthor(string name)
         {
-            if (!IsAdmin()) return Json(new { success = false });
+            if (!IsAdmin())
+                return Json(new { success = false });
+
             var existing = db.Authors.FirstOrDefault(a => a.FullName.ToLower() == name.ToLower());
+
             if (existing != null)
                 return Json(new { success = true, id = existing.AuthorId, name = existing.FullName });
 
@@ -937,17 +1043,21 @@ namespace MyLibrary.Controllers
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
+
             db.Authors.InsertOnSubmit(newAuthor);
             db.SubmitChanges();
+
             return Json(new { success = true, id = newAuthor.AuthorId, name = newAuthor.FullName });
         }
 
-        // ── CREATE NEW CATEGORY IF NOT EXISTS ──
         [HttpPost]
         public ActionResult GetOrCreateCategory(string name)
         {
-            if (!IsAdmin()) return Json(new { success = false });
+            if (!IsAdmin())
+                return Json(new { success = false });
+
             var existing = db.Categories.FirstOrDefault(c => c.CategoryName.ToLower() == name.ToLower());
+
             if (existing != null)
                 return Json(new { success = true, id = existing.CategoryId, name = existing.CategoryName });
 
@@ -957,17 +1067,21 @@ namespace MyLibrary.Controllers
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
+
             db.Categories.InsertOnSubmit(newCat);
             db.SubmitChanges();
+
             return Json(new { success = true, id = newCat.CategoryId, name = newCat.CategoryName });
         }
 
-        // ── CREATE NEW PUBLISHER IF NOT EXISTS ──
         [HttpPost]
         public ActionResult GetOrCreatePublisher(string name)
         {
-            if (!IsAdmin()) return Json(new { success = false });
+            if (!IsAdmin())
+                return Json(new { success = false });
+
             var existing = db.Publishers.FirstOrDefault(p => p.PublisherName.ToLower() == name.ToLower());
+
             if (existing != null)
                 return Json(new { success = true, id = existing.PublisherId, name = existing.PublisherName });
 
@@ -977,9 +1091,112 @@ namespace MyLibrary.Controllers
                 IsActive = true,
                 CreatedAt = DateTime.Now
             };
+
             db.Publishers.InsertOnSubmit(newPub);
             db.SubmitChanges();
+
             return Json(new { success = true, id = newPub.PublisherId, name = newPub.PublisherName });
+        }
+
+        private string SaveEbookFile(HttpPostedFileBase file)
+        {
+            if (file == null || file.ContentLength <= 0)
+                return null;
+
+            var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".txt" };
+            var extension = Path.GetExtension(file.FileName);
+
+            if (string.IsNullOrEmpty(extension))
+                return null;
+
+            extension = extension.ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(extension))
+                return null;
+
+            var folderPath = Server.MapPath("~/Uploads/Ebooks/");
+
+            if (!Directory.Exists(folderPath))
+                Directory.CreateDirectory(folderPath);
+
+            var safeFileName = Path.GetFileNameWithoutExtension(file.FileName);
+            safeFileName = string.Join("_", safeFileName.Split(Path.GetInvalidFileNameChars()));
+
+            var fileName = safeFileName + "_" + DateTime.Now.ToString("yyyyMMddHHmmssfff") + extension;
+            var fullPath = Path.Combine(folderPath, fileName);
+
+            file.SaveAs(fullPath);
+
+            return "/Uploads/Ebooks/" + fileName;
+        }
+
+        // TEMP: Fix Borrowing Year 2024 -> 2026
+        public ActionResult FixBorrowingYear()
+        {
+            if (!IsAdmin()) return RedirectToLogin();
+
+            var borrowings = db.Borrowings.ToList();
+
+            foreach (var b in borrowings)
+            {
+                if (b.BorrowDate.Year == 2024)
+                {
+                    b.BorrowDate = ChangeYear(b.BorrowDate, 2026);
+                }
+
+                if (b.DueDate.Year == 2024)
+                {
+                    b.DueDate = ChangeYear(b.DueDate, 2026);
+                }
+
+                if (b.ReturnDate != null && b.ReturnDate.Value.Year == 2024)
+                {
+                    b.ReturnDate = ChangeYear(b.ReturnDate.Value, 2026);
+                }
+
+                if (b.CreatedAt.Year == 2024)
+                {
+                    b.CreatedAt = ChangeYear(b.CreatedAt, 2026);
+                }
+
+                b.UpdatedAt = DateTime.Now;
+            }
+
+            var details = db.BorrowingDetails.ToList();
+
+            foreach (var d in details)
+            {
+                if (d.ReturnedAt != null && d.ReturnedAt.Value.Year == 2024)
+                {
+                    d.ReturnedAt = ChangeYear(d.ReturnedAt.Value, 2026);
+                }
+            }
+
+            db.SubmitChanges();
+
+            return Content("Done. All borrowing years from 2024 have been changed to 2026.");
+        }
+
+        private DateTime ChangeYear(DateTime oldDate, int newYear)
+        {
+            int day = Math.Min(oldDate.Day, DateTime.DaysInMonth(newYear, oldDate.Month));
+
+            return new DateTime(
+                newYear,
+                oldDate.Month,
+                day,
+                oldDate.Hour,
+                oldDate.Minute,
+                oldDate.Second
+            );
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                db.Dispose();
+
+            base.Dispose(disposing);
         }
     }
 }

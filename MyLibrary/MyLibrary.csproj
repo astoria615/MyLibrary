@@ -138,6 +138,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Library.dbml</DependentUpon>
     </Compile>
+    <Compile Include="Models\LibraryDataContextFix.cs" />
     <Compile Include="Models\ReaderFinesViewModel.cs" />
     <Compile Include="Models\ReaderProfileViewModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

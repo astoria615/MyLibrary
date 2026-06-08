@@ -2,7 +2,10 @@
 using MyLibrary.Models.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
+using System.Net;
+using System.Net.Mail;
 using System.Web.Mvc;
 using System.Web.Security;
 
@@ -61,6 +64,146 @@ namespace MyLibrary.Controllers
             }
         }
 
+        // ─────────────────────────────────────────
+        // EMAIL HELPER METHODS
+        // ─────────────────────────────────────────
+        private bool SendEmail(string to, string subject, string body, out string error)
+        {
+            error = "";
+
+            try
+            {
+                string senderEmail = ConfigurationManager.AppSettings["SmtpEmail"];
+                string appPassword = ConfigurationManager.AppSettings["SmtpAppPassword"];
+
+                if (string.IsNullOrWhiteSpace(senderEmail) || string.IsNullOrWhiteSpace(appPassword))
+                {
+                    error = "SMTP Email or SMTP App Password is missing in Web.config.";
+                    return false;
+                }
+
+                using (MailMessage mail = new MailMessage())
+                {
+                    mail.From = new MailAddress(senderEmail, "My Library System");
+                    mail.To.Add(to);
+                    mail.Subject = subject;
+                    mail.Body = body;
+                    mail.IsBodyHtml = false;
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                    {
+                        smtp.UseDefaultCredentials = false;
+                        smtp.Credentials = new NetworkCredential(senderEmail, appPassword);
+                        smtp.EnableSsl = true;
+                        smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
+                        smtp.Send(mail);
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.GetBaseException().Message;
+                return false;
+            }
+        }
+
+        private void SaveEmailNotification(int userId, string type, string subject, string body, string status)
+        {
+            var notification = new EmailNotification
+            {
+                UserId = userId,
+                NotificationType = type,
+                Subject = subject,
+                Body = body,
+                Status = status,
+                SentAt = DateTime.Now,
+                CreatedAt = DateTime.Now
+            };
+
+            db.EmailNotifications.InsertOnSubmit(notification);
+        }
+
+        private UserAccount GetReaderUserByReaderId(int readerId)
+        {
+            var reader = db.Readers.FirstOrDefault(r => r.ReaderId == readerId);
+
+            if (reader == null)
+                return null;
+
+            var user = db.UserAccounts.FirstOrDefault(u => u.UserId == reader.UserId);
+
+            return user;
+        }
+
+        private List<string> GetBookTitlesByBorrowing(int borrowingId)
+        {
+            var titles = (from d in db.BorrowingDetails
+                          join b in db.Books on d.BookId equals b.BookId
+                          where d.BorrowingId == borrowingId
+                          select b.Title).ToList();
+
+            return titles;
+        }
+
+        private string FormatBookList(List<string> titles)
+        {
+            if (titles == null || !titles.Any())
+                return "- No book information available";
+
+            return "- " + string.Join("\n- ", titles);
+        }
+
+        private void SendFineNotificationToReader(int readerId, int borrowingId, string fineType, decimal amount, string notes)
+        {
+            var readerUser = GetReaderUserByReaderId(readerId);
+
+            if (readerUser == null || string.IsNullOrWhiteSpace(readerUser.Email))
+                return;
+
+            string subject = "Fine Notification - My Library";
+
+            string body = string.Format(
+@"Hello {0},
+
+A fine has been issued to your library account.
+
+Borrowing ID: #{1}
+Fine Type: {2}
+Amount: {3:N2}
+Notes: {4}
+Issued Date: {5:dd/MM/yyyy HH:mm}
+
+Please check your fine history and complete the payment as soon as possible.
+
+Best regards,
+My Library System",
+                readerUser.FullName,
+                borrowingId,
+                fineType,
+                amount,
+                string.IsNullOrWhiteSpace(notes) ? "N/A" : notes,
+                DateTime.Now
+            );
+
+            string error;
+            bool sent = SendEmail(readerUser.Email, subject, body, out error);
+
+            SaveEmailNotification(
+                readerUser.UserId,
+                "FineNotification",
+                subject,
+                sent ? body : body + "\n\nEmail sending error: " + error,
+                sent ? "Sent" : "Failed"
+            );
+
+            db.SubmitChanges();
+        }
+
+        // ─────────────────────────────────────────
+        // COMMON BORROW ACTIVITY BUILDER
+        // ─────────────────────────────────────────
         private List<BorrowActivityItem> BuildActivityList(List<int> borrowingIds)
         {
             var result = new List<BorrowActivityItem>();
@@ -156,7 +299,7 @@ namespace MyLibrary.Controllers
             return View(BuildActivityList(borrowingIds));
         }
 
-        // ── APPROVE BORROW ──
+        // ── APPROVE BORROW + BORROW CONFIRMATION EMAIL ──
         [HttpPost]
         public ActionResult ApproveBorrow(int borrowingId)
         {
@@ -177,7 +320,53 @@ namespace MyLibrary.Controllers
 
             db.SubmitChanges();
 
-            return Json(new { success = true, message = "Borrow request approved." });
+            var readerUser = GetReaderUserByReaderId(borrow.ReaderId);
+
+            if (readerUser != null && !string.IsNullOrWhiteSpace(readerUser.Email))
+            {
+                var titles = GetBookTitlesByBorrowing(borrow.BorrowingId);
+
+                string subject = "Borrow Confirmation - My Library";
+
+                string body = string.Format(
+@"Hello {0},
+
+Your borrow request has been approved.
+
+Borrowing ID: #{1}
+
+Books:
+{2}
+
+Borrow Date: {3:dd/MM/yyyy}
+Due Date: {4:dd/MM/yyyy}
+
+Please return the books on or before the due date.
+
+Best regards,
+My Library System",
+                    readerUser.FullName,
+                    borrow.BorrowingId,
+                    FormatBookList(titles),
+                    borrow.BorrowDate,
+                    borrow.DueDate
+                );
+
+                string error;
+                bool sent = SendEmail(readerUser.Email, subject, body, out error);
+
+                SaveEmailNotification(
+                    readerUser.UserId,
+                    "BorrowConfirmation",
+                    subject,
+                    sent ? body : body + "\n\nEmail sending error: " + error,
+                    sent ? "Sent" : "Failed"
+                );
+
+                db.SubmitChanges();
+            }
+
+            return Json(new { success = true, message = "Borrow request approved and confirmation email processed." });
         }
 
         // ── REJECT BORROW ──
@@ -198,6 +387,75 @@ namespace MyLibrary.Controllers
             db.SubmitChanges();
 
             return Json(new { success = true, message = "Request rejected." });
+        }
+
+        // ── RETURN REMINDER EMAIL ──
+        [HttpPost]
+        public ActionResult SendReturnReminder(int borrowingId)
+        {
+            if (!IsLibrarian())
+                return Json(new { success = false, message = "Unauthorized." });
+
+            var borrow = db.Borrowings.FirstOrDefault(b => b.BorrowingId == borrowingId);
+
+            if (borrow == null)
+                return Json(new { success = false, message = "Borrowing not found." });
+
+            if (borrow.Status != "Approved" && borrow.Status != "Overdue")
+                return Json(new { success = false, message = "This borrowing is not active or overdue." });
+
+            var readerUser = GetReaderUserByReaderId(borrow.ReaderId);
+
+            if (readerUser == null || string.IsNullOrWhiteSpace(readerUser.Email))
+                return Json(new { success = false, message = "Reader email not found." });
+
+            var titles = GetBookTitlesByBorrowing(borrow.BorrowingId);
+
+            string subject = "Return Reminder - My Library";
+
+            string body = string.Format(
+@"Hello {0},
+
+This is a reminder for your borrowed books.
+
+Borrowing ID: #{1}
+
+Books:
+{2}
+
+Borrow Date: {3:dd/MM/yyyy}
+Due Date: {4:dd/MM/yyyy}
+Current Status: {5}
+
+Please return the books on time to avoid late fines.
+
+Best regards,
+My Library System",
+                readerUser.FullName,
+                borrow.BorrowingId,
+                FormatBookList(titles),
+                borrow.BorrowDate,
+                borrow.DueDate,
+                borrow.Status
+            );
+
+            string error;
+            bool sent = SendEmail(readerUser.Email, subject, body, out error);
+
+            SaveEmailNotification(
+                readerUser.UserId,
+                "ReturnReminder",
+                subject,
+                sent ? body : body + "\n\nEmail sending error: " + error,
+                sent ? "Sent" : "Failed"
+            );
+
+            db.SubmitChanges();
+
+            if (!sent)
+                return Json(new { success = false, message = "Reminder saved but email failed: " + error });
+
+            return Json(new { success = true, message = "Return reminder email sent successfully." });
         }
 
         // ── MARK RETURNED ──
@@ -303,7 +561,7 @@ namespace MyLibrary.Controllers
             return View(vm);
         }
 
-        // ── ADD FINE ──
+        // ── ADD FINE + FINE NOTIFICATION EMAIL ──
         [HttpPost]
         public ActionResult AddFine(int borrowingId, int readerId, string fineType, decimal amount, string notes)
         {
@@ -338,32 +596,9 @@ namespace MyLibrary.Controllers
                 db.SubmitChanges();
             }
 
-            var readerUser = reader != null
-                ? db.UserAccounts.FirstOrDefault(u => u.UserId == reader.UserId)
-                : null;
+            SendFineNotificationToReader(readerId, borrowingId, fineType, amount, notes);
 
-            if (readerUser != null)
-            {
-                var notification = new EmailNotification
-                {
-                    UserId = readerUser.UserId,
-                    NotificationType = "FineNotification",
-                    Subject = "Fine Issued - " + fineType,
-                    Body = string.Format(
-                        "A {0} fine of ${1:F2} has been issued. Reason: {2}",
-                        fineType,
-                        amount,
-                        notes ?? "N/A"),
-                    Status = "Sent",
-                    SentAt = DateTime.Now,
-                    CreatedAt = DateTime.Now
-                };
-
-                db.EmailNotifications.InsertOnSubmit(notification);
-                db.SubmitChanges();
-            }
-
-            return Json(new { success = true, message = "Fine added successfully." });
+            return Json(new { success = true, message = "Fine added and notification email processed." });
         }
 
         // ── UPDATE PAYMENT STATUS ──
@@ -508,29 +743,13 @@ namespace MyLibrary.Controllers
                         db.SubmitChanges();
                     }
 
-                    var readerUser = reader != null
-                        ? db.UserAccounts.FirstOrDefault(u => u.UserId == reader.UserId)
-                        : null;
-
-                    if (readerUser != null)
-                    {
-                        db.EmailNotifications.InsertOnSubmit(new EmailNotification
-                        {
-                            UserId = readerUser.UserId,
-                            NotificationType = "FineNotification",
-                            Subject = "Fine Issued - Copy " + issueType,
-                            Body = string.Format(
-                                "A {0} fine of ${1:F2} has been issued. {2}",
-                                issueType,
-                                fineAmount,
-                                notes ?? ""),
-                            Status = "Sent",
-                            SentAt = DateTime.Now,
-                            CreatedAt = DateTime.Now
-                        });
-
-                        db.SubmitChanges();
-                    }
+                    SendFineNotificationToReader(
+                        readerId.Value,
+                        borrowing.BorrowingId,
+                        issueType == "Lost" ? "Lost" : "Damaged",
+                        fineAmount,
+                        notes
+                    );
                 }
             }
 
@@ -590,20 +809,15 @@ namespace MyLibrary.Controllers
 
             return Json(readers, JsonRequestBehavior.AllowGet);
         }
-        /// <summary>
-        /// GET: /Librarian/Setting
-        /// Renders system preferences while maintaining the librarian dashboard layout shell context.
-        /// </summary>
+
         public ActionResult Setting()
         {
             if (!IsLibrarian()) return RedirectToLogin();
 
             return View();
         }
-        // ── READERS MANAGEMENT & PROFILES ──
 
-        // 1. GET: /Librarian/Readers
-        // Renders the entire collection directory
+        // ── READERS MANAGEMENT & PROFILES ──
         public ActionResult Readers()
         {
             if (!IsLibrarian()) return RedirectToLogin();
@@ -621,11 +835,9 @@ namespace MyLibrary.Controllers
                                    TotalFines = r.TotalFines
                                }).ToList();
 
-            return View(readersList); // Passes a List<ReaderProfileViewModel>
+            return View(readersList);
         }
 
-        // 2. GET: /Librarian/ReaderProfile/{id}
-        // Renders the standalone individual workspace detail card
         public ActionResult ReaderProfile(int id)
         {
             if (!IsLibrarian()) return RedirectToLogin();
@@ -643,21 +855,20 @@ namespace MyLibrary.Controllers
                                Address = u.Address,
                                AvatarUrl = u.AvatarUrl,
                                TotalFines = r.TotalFines
-                           }).FirstOrDefault(); // Extracts a single instance object
+                           }).FirstOrDefault();
 
             if (profile == null)
             {
                 return HttpNotFound("Reader not found.");
             }
 
-            // Populate borrowing history list via your activity method
             profile.BorrowingHistory = BuildActivityList(db.Borrowings
                 .Where(b => b.ReaderId == id)
                 .OrderByDescending(b => b.BorrowDate)
                 .Select(b => b.BorrowingId)
                 .ToList());
 
-            return View(profile); // Passes a single ReaderProfileViewModel
+            return View(profile);
         }
 
         protected override void Dispose(bool disposing)

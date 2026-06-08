@@ -1,4 +1,5 @@
 ﻿@model MyLibrary.Models.ViewModels.AdminBookEditViewModel
+
 @{
     ViewBag.Title = "Edit Book";
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
@@ -11,7 +12,7 @@
             <a href="@Url.Action("Books","Admin")" class="btn-sm-blue" style="text-decoration:none">← Back</a>
         </div>
 
-        @using (Html.BeginForm("EditBook", "Admin", FormMethod.Post, new { @class = "profile-form", id = "book-form" }))
+        @using (Html.BeginForm("EditBook", "Admin", FormMethod.Post, new { @class = "profile-form", id = "book-form", enctype = "multipart/form-data" }))
         {
             @Html.AntiForgeryToken()
             @Html.HiddenFor(m => m.BookId)
@@ -24,6 +25,7 @@
                         onclick="return resolveNewEntries()">
                     Save Changes
                 </button>
+
                 <a href="@Url.Action("Books","Admin")" style="font-size:13px;color:var(--text-muted)">Cancel</a>
             </div>
         }
@@ -37,32 +39,59 @@
         function searchField(field, val) {
             var badge = document.getElementById(field + '-new-badge');
             var hiddenId = document.getElementById(field + '-id');
+
             hiddenId.value = '';
             badge.style.display = 'none';
+
             clearTimeout(timers[field]);
+
             if (!val || val.length < 1) {
                 document.getElementById(field + '-suggestions').style.display = 'none';
                 return;
             }
+
             timers[field] = setTimeout(function () {
-                var urls = { author: '/Admin/SearchAuthors', category: '/Admin/SearchCategories', publisher: '/Admin/SearchPublishers' };
-                fetch(urls[field] + '?q=' + encodeURIComponent(val)).then(r => r.json()).then(data => { renderSuggestions(field, data, val); });
+                var urls = {
+                    author: '/Admin/SearchAuthors',
+                    category: '/Admin/SearchCategories',
+                    publisher: '/Admin/SearchPublishers'
+                };
+
+                fetch(urls[field] + '?q=' + encodeURIComponent(val))
+                    .then(r => r.json())
+                    .then(data => {
+                        renderSuggestions(field, data, val);
+                    });
             }, 250);
         }
 
         function renderSuggestions(field, data, inputVal) {
             var list = document.getElementById(field + '-suggestions');
             var html = '';
+
             if (data.length > 0) {
                 data.forEach(function (item) {
                     var id, name;
-                    if (field === 'author') { id = item.AuthorId; name = item.FullName; }
-                    else if (field === 'category') { id = item.CategoryId; name = item.CategoryName; }
-                    else if (field === 'publisher') { id = item.PublisherId; name = item.PublisherName; }
+
+                    if (field === 'author') {
+                        id = item.AuthorId;
+                        name = item.FullName;
+                    }
+                    else if (field === 'category') {
+                        id = item.CategoryId;
+                        name = item.CategoryName;
+                    }
+                    else if (field === 'publisher') {
+                        id = item.PublisherId;
+                        name = item.PublisherName;
+                    }
+
                     html += '<div class="autocomplete-item" onclick="selectField(\'' + field + '\',' + id + ',\'' + name.replace(/'/g, "\\'") + '\')">' + name + '</div>';
                 });
             }
+
             html += '<div class="autocomplete-item autocomplete-add" onclick="markAsNew(\'' + field + '\',\'' + inputVal.replace(/'/g, "\\'") + '\')">✦ Add new: <strong>' + inputVal + '</strong></div>';
+
             list.innerHTML = html;
             list.style.display = 'block';
         }
@@ -87,43 +116,71 @@
                 { field: 'category', createUrl: '/Admin/GetOrCreateCategory', inputId: 'category-input', hiddenId: 'category-id' },
                 { field: 'publisher', createUrl: '/Admin/GetOrCreatePublisher', inputId: 'publisher-input', hiddenId: 'publisher-id' }
             ];
+
             for (var i = 0; i < fields.length; i++) {
                 var f = fields[i];
                 var name = document.getElementById(f.inputId).value.trim();
                 var id = document.getElementById(f.hiddenId).value;
+
                 if (name && !id) {
                     var resp = await fetch(f.createUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'name=' + encodeURIComponent(name)
                     }).then(r => r.json());
-                    if (resp.success) document.getElementById(f.hiddenId).value = resp.id;
+
+                    if (resp.success) {
+                        document.getElementById(f.hiddenId).value = resp.id;
+                    }
                 }
             }
+
             return true;
         }
 
         function previewCoverFile(input) {
             if (input.files && input.files[0]) {
                 var reader = new FileReader();
+
                 reader.onload = function (e) {
                     var img = new Image();
+
                     img.onload = function () {
                         var canvas = document.createElement('canvas');
-                        var maxW = 400, maxH = 600;
-                        var w = img.width, h = img.height;
-                        if (w / h > maxW / maxH) { if (w > maxW) { h = h * maxW / w; w = maxW; } }
-                        else { if (h > maxH) { w = w * maxH / h; h = maxH; } }
-                        canvas.width = w; canvas.height = h;
+                        var maxW = 400;
+                        var maxH = 600;
+                        var w = img.width;
+                        var h = img.height;
+
+                        if (w / h > maxW / maxH) {
+                            if (w > maxW) {
+                                h = h * maxW / w;
+                                w = maxW;
+                            }
+                        }
+                        else {
+                            if (h > maxH) {
+                                w = w * maxH / h;
+                                h = maxH;
+                            }
+                        }
+
+                        canvas.width = w;
+                        canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+
                         var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
                         var preview = document.getElementById('cover-preview');
                         preview.src = dataUrl;
                         preview.style.display = 'block';
+
                         document.getElementById('cover-url-hidden').value = dataUrl;
                     };
+
                     img.src = e.target.result;
                 };
+
                 reader.readAsDataURL(input.files[0]);
             }
         }
@@ -132,8 +189,10 @@
             ['author', 'category', 'publisher'].forEach(function (field) {
                 var input = document.getElementById(field + '-input');
                 var list = document.getElementById(field + '-suggestions');
-                if (list && input && !input.contains(e.target) && !list.contains(e.target))
+
+                if (list && input && !input.contains(e.target) && !list.contains(e.target)) {
                     list.style.display = 'none';
+                }
             });
         });
     </script>
