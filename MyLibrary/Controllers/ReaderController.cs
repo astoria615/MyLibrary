@@ -317,6 +317,34 @@ namespace MyLibrary.Controllers
 
             return View(viewModel);
         }
+        public ActionResult VNPayReturn()
+        {
+            string vnp_ResponseCode = Request.QueryString["vnp_ResponseCode"];
+
+            if (vnp_ResponseCode == "00")
+            {
+                int userId = int.Parse(User.Identity.Name);
+                var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+                if (reader != null)
+                {
+                    var unpaidFines = db.Fines
+                        .Where(f => f.ReaderId == reader.ReaderId && f.PaymentStatus == "Unpaid")
+                        .ToList();
+
+                    foreach (var fine in unpaidFines)
+                    {
+                        fine.PaymentStatus = "Paid";
+                        fine.PaymentDate = DateTime.Now;
+                        fine.PaymentMethod = "VNPay";
+                        fine.PaidAmount = fine.Amount;
+                    }
+
+                    db.SubmitChanges();
+                }
+            }
+
+            return RedirectToAction("MyFines");
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing) db.Dispose();

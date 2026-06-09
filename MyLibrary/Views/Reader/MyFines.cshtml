@@ -689,10 +689,14 @@
         function executeGateway(methodName) {
             closeModal('paymentModal');
             if (methodName === 'Cash') {
-                alert('✓ System Logging Complete!\nPlease bring exact balance metrics to the central hub desk configuration point.');
+                alert('Please settle your balance at the library desk.');
                 return;
             }
-            alert('🔄 Handshaking Secure Pipelines: Initializing routing frameworks for ' + methodName + ' API configurations context...');
+            if (methodName === 'VNPay') {
+                window.location.href = '/VNPAY/VNPAY_CS_ASPX/vnpay_pay.aspx';
+                return;
+            }
+            alert('Payment gateway for ' + methodName + ' coming soon.');
         }
     </script>
 }
