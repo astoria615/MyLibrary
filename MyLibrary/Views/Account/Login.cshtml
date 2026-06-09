@@ -1,4 +1,5 @@
 ﻿@model MyLibrary.Models.ViewModels.LoginViewModel
+
 @{
     ViewBag.Title = "Login";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -21,22 +22,64 @@
 
             <div class="form-group">
                 @Html.LabelFor(m => m.Email)
-                @Html.TextBoxFor(m => m.Email, new { @class = "form-input", placeholder = "your@email.com" })
+                @Html.TextBoxFor(m => m.Email, new
+                {
+                    @class = "form-input",
+                    placeholder = "your@email.com"
+                })
                 @Html.ValidationMessageFor(m => m.Email, "", new { @class = "field-error" })
             </div>
+
             <div class="form-group">
                 @Html.LabelFor(m => m.Password)
-                @Html.PasswordFor(m => m.Password, new { @class = "form-input", placeholder = "••••••••", autocomplete = "off" })
+                @Html.PasswordFor(m => m.Password, new
+                {
+                    @class = "form-input",
+                    placeholder = "••••••••",
+                    autocomplete = "off"
+                })
                 @Html.ValidationMessageFor(m => m.Password, "", new { @class = "field-error" })
             </div>
+
+            <div class="form-group">
+                <label>Captcha</label>
+
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <div style="
+                        min-width:120px;
+                        height:42px;
+                        display:flex;
+                        align-items:center;
+                        justify-content:center;
+                        border-radius:8px;
+                        background:#f1f1f1;
+                        color:#222;
+                        font-weight:700;
+                        border:1px solid #ddd;
+                    ">
+                        @ViewBag.CaptchaQuestion
+                    </div>
+
+                    <input type="text"
+                           name="captchaAnswer"
+                           class="form-input"
+                           placeholder="Enter answer"
+                           autocomplete="off"
+                           required
+                           style="flex:1;" />
+                </div>
+            </div>
+
             <div class="form-check">
                 @Html.CheckBoxFor(m => m.RememberMe)
                 @Html.LabelFor(m => m.RememberMe)
             </div>
+
             <div style="text-align:right;margin-top:-8px;margin-bottom:4px">
                 <a href="@Url.Action("ForgotPassword","Account")"
                    style="font-size:12px;color:var(--blue)">Forgot password?</a>
             </div>
+
             <button type="submit" class="btn-primary">Sign In</button>
         }
 

@@ -52,14 +52,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewBag.Title – MY LIBRARY</title>
 
-    <!-- ANTI-FLASH SCRIPT: inline, no defer, no async, before ALL css -->
     <script>
         (function () {
             var dark = localStorage.getItem('darkMode') === 'true';
             var root = document.documentElement;
+
             if (dark) {
                 root.classList.add('dark');
-                // Set background directly so no white flash before CSS loads
                 root.style.backgroundColor = '#1a1a18';
                 root.style.color = '#e8e6e0';
             } else {
@@ -76,8 +75,10 @@
     <div class="app-shell">
         <nav class="sidebar">
             <div class="sidebar-brand">MY LIBRARY</div>
+
             <ul class="sidebar-nav">
                 <li>@Html.ActionLink("Home", "Index", "Guest")</li>
+
                 <li class="has-submenu">
                     <a href="#" id="cat-toggle" onclick="toggleCategoryMenu(event)">Category</a>
                     <div class="cat-dropdown" id="cat-dropdown" style="display:none">
@@ -93,15 +94,18 @@
                         }
                     </div>
                 </li>
+
                 @if (Request.IsAuthenticated)
                 {
                     <li>@Html.ActionLink("My Borrows", "MyBorrows", "Reader")</li>
+
                     <li>
                         <a href="@Url.Action("BorrowForm", "Reader")" style="position: relative; display: flex; align-items: center; justify-content: space-between; width: 100%;">
                             <span>Borrow Form</span>
                             <span id="sidebar-basket-count" style="display: none; background-color: #e63946; color: #ffffff; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; line-height: 1;">0</span>
                         </a>
                     </li>
+
                     <li>
                         <a href="@Url.Action("MyFines", "Reader")" class="nav-item nav-fines">
                             My Fines
@@ -110,12 +114,22 @@
                     </li>
                 }
             </ul>
+
             <div class="sidebar-divider"></div>
+
             <ul class="sidebar-nav sidebar-nav-bottom">
                 <li>
-                    @Html.ActionLink("Setting", "Setting", "Guest", null, new { @class = Request.RequestContext.RouteData.Values["action"].ToString() == "Setting" ? "active" : "" })
+                    @Html.ActionLink(
+                        "Setting",
+                        "Setting",
+                        "Guest",
+                        null,
+                        new { @class = Request.RequestContext.RouteData.Values["action"].ToString() == "Setting" ? "active" : "" }
+                    )
                 </li>
+
                 <li>@Html.ActionLink("Support", "Support", "Guest")</li>
+
                 @if (Request.IsAuthenticated)
                 {
                     <li>@Html.ActionLink("Logout", "Logout", "Account")</li>
@@ -127,8 +141,13 @@
             <div class="topbar">
                 @using (Html.BeginForm("Search", "Guest", FormMethod.Get, new { @class = "search-form" }))
                 {
-                    <input type="text" name="q" placeholder="Search by title, ISBN, author, category…"
-                           value="@ViewBag.SearchQuery" class="search-input" autocomplete="off" />
+                    <input type="text"
+                           name="q"
+                           placeholder="Search by title, ISBN, author, category…"
+                           value="@ViewBag.SearchQuery"
+                           class="search-input"
+                           autocomplete="off" />
+
                     <button type="submit" class="search-btn">&#9906;</button>
                 }
 
@@ -145,29 +164,33 @@
                             <button class="notif-bell-btn" id="notifBellBtn" onclick="toggleNotifPanel()">
                                 🔔
                                 <span id="notifBadge" style="
-            display:none;
-            position:absolute;
-            top:-4px; right:-4px;
-            background:#e24b4a;
-            color:white;
-            font-size:10px;
-            font-weight:700;
-            min-width:16px;
-            height:16px;
-            border-radius:50%;
-            text-align:center;
-            line-height:16px;
-            padding:0 3px;
-        ">0</span>
+                                    display:none;
+                                    position:absolute;
+                                    top:-4px; right:-4px;
+                                    background:#e24b4a;
+                                    color:white;
+                                    font-size:10px;
+                                    font-weight:700;
+                                    min-width:16px;
+                                    height:16px;
+                                    border-radius:50%;
+                                    text-align:center;
+                                    line-height:16px;
+                                    padding:0 3px;
+                                ">0</span>
                             </button>
+
                             <div id="notifPanel" style="display:none;">
-                                <!-- your existing notif panel content -->
+                                <!-- notification content will be loaded here -->
                             </div>
                         </div>
 
                         <a href="@Url.Action("Profile","Account")" class="user-chip">
-                            <img src="@avatarSrc" class="user-avatar" alt="avatar"
+                            <img src="@avatarSrc"
+                                 class="user-avatar"
+                                 alt="avatar"
                                  onerror="this.src='/Content/images/default-avatar.png'" />
+
                             <span class="user-name">@fullName</span>
                         </a>
                     }
@@ -189,10 +212,10 @@
     <script src="~/Scripts/library.js"></script>
 
     <script type="text/javascript">
-        // 1. Synchronize the layout sidebar counter instantly based on client state
         function updateNavbarBasketBadge() {
             var basket = JSON.parse(localStorage.getItem('borrowBasket')) || [];
             var badge = document.getElementById('sidebar-basket-count');
+
             if (badge) {
                 if (basket.length > 0) {
                     badge.textContent = basket.length;
@@ -203,48 +226,53 @@
             }
         }
 
-        // 2. Global utility function triggered whenever "Borrow Now" gets clicked across pages
         function addAssetToBorrowForm(bookId, bookTitle) {
             var basket = JSON.parse(localStorage.getItem('borrowBasket')) || [];
 
-            // Rule: Check if already present in the list
-            var exists = basket.some(function (item) { return item.id === bookId; });
+            var exists = basket.some(function (item) {
+                return item.id === bookId;
+            });
+
             if (exists) {
                 alert("This item is already added to your current borrow request layout.");
                 return;
             }
 
-            // Rule Check: Max 3 books configuration block
             if (basket.length >= 3) {
                 alert("System Limit: You can select a maximum of 3 books per single request form.");
                 return;
             }
 
-            // Push into local array storage securely
-            basket.push({ id: bookId, title: bookTitle });
+            basket.push({
+                id: bookId,
+                title: bookTitle
+            });
+
             localStorage.setItem('borrowBasket', JSON.stringify(basket));
 
-            // Re-render UI bubble state
             updateNavbarBasketBadge();
 
             alert('"' + bookTitle + '" successfully added to your Borrow Form.');
         }
 
-        // Initialize state on page display
         document.addEventListener("DOMContentLoaded", function () {
             updateNavbarBasketBadge();
         });
     </script>
+
     @if (Request.IsAuthenticated)
     {
         <script type="text/javascript">
-            // Check unread notifications
             function checkUnreadNotifs() {
                 fetch('/Reader/GetUnreadNotifCount')
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) {
+                        return r.json();
+                    })
                     .then(function (data) {
                         var badge = document.getElementById('notifBadge');
+
                         if (!badge) return;
+
                         if (data.count > 0) {
                             badge.textContent = data.count > 9 ? '9+' : data.count;
                             badge.style.display = 'inline-block';
@@ -257,34 +285,41 @@
 
             function toggleNotifPanel() {
                 var panel = document.getElementById('notifPanel');
+
                 if (!panel) return;
+
                 var isOpening = panel.style.display === 'none';
 
                 if (isOpening) {
                     panel.style.display = 'block';
+
                     fetch('/Reader/Notifications')
-                        .then(function (r) { return r.text(); })
+                        .then(function (r) {
+                            return r.text();
+                        })
                         .then(function (html) {
                             panel.innerHTML = html;
-                            // Hide badge after viewing
+
                             var badge = document.getElementById('notifBadge');
-                            if (badge) badge.style.display = 'none';
+
+                            if (badge) {
+                                badge.style.display = 'none';
+                            }
                         });
                 } else {
                     panel.style.display = 'none';
                 }
             }
 
-            // Close panel when clicking outside
             document.addEventListener('click', function (e) {
                 var wrapper = document.querySelector('.notif-wrapper');
                 var panel = document.getElementById('notifPanel');
+
                 if (panel && wrapper && !wrapper.contains(e.target)) {
                     panel.style.display = 'none';
                 }
             });
 
-            // Check on load and every 60 seconds
             document.addEventListener('DOMContentLoaded', function () {
                 checkUnreadNotifs();
                 setInterval(checkUnreadNotifs, 60000);

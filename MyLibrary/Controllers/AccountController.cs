@@ -88,6 +88,29 @@ namespace MyLibrary.Controllers
             return true;
         }
 
+        // ── GENERATE CAPTCHA ──
+        private void GenerateLoginCaptcha()
+        {
+            Random rand = new Random();
+
+            int a = rand.Next(1, 10);
+            int b = rand.Next(1, 10);
+
+            Session["LoginCaptchaAnswer"] = (a + b).ToString();
+            ViewBag.CaptchaQuestion = a + " + " + b + " = ?";
+        }
+
+        // ── VALIDATE CAPTCHA ──
+        private bool ValidateLoginCaptcha(string captchaAnswer)
+        {
+            string correctAnswer = Session["LoginCaptchaAnswer"] as string;
+
+            if (string.IsNullOrWhiteSpace(correctAnswer) || string.IsNullOrWhiteSpace(captchaAnswer))
+                return false;
+
+            return captchaAnswer.Trim() == correctAnswer;
+        }
+
         // ── LOGIN GET ──
         public ActionResult Login(string returnUrl)
         {
@@ -96,6 +119,7 @@ namespace MyLibrary.Controllers
                 if (!RefreshSession())
                 {
                     ViewBag.ReturnUrl = returnUrl;
+                    GenerateLoginCaptcha();
                     return View();
                 }
 
@@ -111,42 +135,52 @@ namespace MyLibrary.Controllers
             }
 
             ViewBag.ReturnUrl = returnUrl;
+            GenerateLoginCaptcha();
             return View();
         }
 
-        // ── LOGIN POST ──
+        // ── LOGIN POST WITH CAPTCHA ──
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Login(LoginViewModel model, string returnUrl)
+        public ActionResult Login(LoginViewModel model, string returnUrl, string captchaAnswer)
         {
             if (!ModelState.IsValid)
+            {
+                GenerateLoginCaptcha();
                 return View(model);
+            }
+
+            if (!ValidateLoginCaptcha(captchaAnswer))
+            {
+                ModelState.AddModelError("", "Captcha is incorrect. Please try again.");
+                GenerateLoginCaptcha();
+                return View(model);
+            }
 
             string hash = HashPassword(model.Password);
 
-            // 1. FIXED: Remove u.IsActive from this matching filter 
-            // This allows you to find the user even if they are deactivated
             var user = db.UserAccounts.FirstOrDefault(u =>
                 u.Email == model.Email &&
                 u.PasswordHash == hash);
 
-            // 2. This now only catches genuinely wrong emails or wrong passwords
             if (user == null)
             {
                 ModelState.AddModelError("", "Invalid email or password.");
+                GenerateLoginCaptcha();
                 return View(model);
             }
 
-            // 3. This block will now successfully catch deactivated accounts!
             if (!user.IsActive)
             {
                 ModelState.AddModelError("", "Your account has been deactivated. Please contact the administrator for more information.");
+                GenerateLoginCaptcha();
                 return View(model);
             }
 
             if (user.Role != "Reader" && user.Role != "Librarian" && user.Role != "Admin")
             {
                 ModelState.AddModelError("", "Access denied.");
+                GenerateLoginCaptcha();
                 return View(model);
             }
 
@@ -184,6 +218,8 @@ namespace MyLibrary.Controllers
             Session["AvatarUrl"] = user.AvatarUrl ?? "";
             Session["Role"] = user.Role;
 
+            Session["LoginCaptchaAnswer"] = null;
+
             if (user.Role == "Admin")
                 return RedirectToAction("Index", "Admin");
 
@@ -192,6 +228,7 @@ namespace MyLibrary.Controllers
 
             return RedirectToAction("Index", "Guest");
         }
+
         // ── REGISTER GET ──
         public ActionResult Register()
         {
@@ -201,7 +238,7 @@ namespace MyLibrary.Controllers
             return View();
         }
 
-        // ── REGISTER POST (UPDATED WITH 4-DIGIT CODE VALIDATION) ──
+        // ── REGISTER POST ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Register(RegisterViewModel model, string inputCode)
@@ -209,25 +246,21 @@ namespace MyLibrary.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            // 1. Fetch saved validation info from Session state cache
             string sessionCode = Session["EmailVerificationCode"] as string;
             string sessionEmail = Session["TargetVerificationEmail"] as string;
 
-            // 2. Validate code match state limits
             if (string.IsNullOrEmpty(sessionCode) || inputCode != sessionCode || model.Email != sessionEmail)
             {
                 ModelState.AddModelError("", "The verification code is incorrect, mismatched, or has expired.");
                 return View(model);
             }
 
-            // 3. Double check database availability path right before database writing operations
             if (db.UserAccounts.Any(u => u.Email == model.Email))
             {
                 ModelState.AddModelError("Email", "This email address was registered by another user session.");
                 return View(model);
             }
 
-            // 4. Verification Successful! Commit account record elements
             var user = new UserAccount
             {
                 Email = model.Email,
@@ -236,7 +269,7 @@ namespace MyLibrary.Controllers
                 Phone = model.Phone,
                 Role = "Reader",
                 IsActive = true,
-                IsEmailVerified = true, // Flagged true since verified via email channel
+                IsEmailVerified = true,
                 FailedLoginAttempts = 0,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
@@ -260,7 +293,6 @@ namespace MyLibrary.Controllers
             db.Readers.InsertOnSubmit(reader);
             db.SubmitChanges();
 
-            // 5. Clean up temporary session usage values
             Session["EmailVerificationCode"] = null;
             Session["TargetVerificationEmail"] = null;
 
@@ -268,56 +300,35 @@ namespace MyLibrary.Controllers
             return RedirectToAction("Login");
         }
 
-        // ── AJAX SERVICE: GENERATE AND DISTRIBUTE CODES OVER SMTP MAIL NETWORKS ──
+        // ── SEND VERIFICATION CODE ──
         [HttpPost]
         public JsonResult SendVerificationCode(string email, string fullName)
         {
             try
             {
-                // Safety checkpoint: Block sending if the email already belongs to a registered account
                 if (db.UserAccounts.Any(u => u.Email == email))
                 {
                     return Json(new { success = false, message = "This email is already registered to another account context." });
                 }
 
-                // Generate a random 4-digit security code
                 Random rand = new Random();
                 string verificationCode = rand.Next(1000, 9999).ToString();
 
-                // Store code information context into active Session
                 Session["EmailVerificationCode"] = verificationCode;
                 Session["TargetVerificationEmail"] = email;
 
-                // ⚠️ SYSTEM ACCOUNT SMTP PARAMETERS
-                string mySenderEmail = "diepchi793@gmail.com";
-                string myAppPassword = "zwjjvknonjhuwnep"; // Insert 16-character password here with no spaces
+                string subject = "Your My Library Verification Code";
 
-                using (MailMessage mail = new MailMessage())
-                {
-                    mail.From = new MailAddress(mySenderEmail, "My Library Security");
-                    mail.To.Add(email);
-                    mail.Subject = "Your My Library Verification Code";
-                    mail.Body = $@"Hello {fullName},
+                string body = @"Hello " + fullName + @",
 
-Your 4-digit account security verification code is: {verificationCode}
+Your 4-digit account security verification code is: " + verificationCode + @"
 
 Please enter this code on the registration page interface component to verify your registration request.
 
 Best regards,
 My Library System Administration";
 
-                    mail.IsBodyHtml = false;
-
-                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
-                    {
-                        smtp.UseDefaultCredentials = false;
-                        smtp.Credentials = new NetworkCredential(mySenderEmail, myAppPassword);
-                        smtp.EnableSsl = true;
-                        smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
-
-                        smtp.Send(mail);
-                    }
-                }
+                SendEmail(email, subject, body);
 
                 return Json(new { success = true, message = "Verification text dispatched seamlessly to your real email listing address!" });
             }
@@ -336,36 +347,38 @@ My Library System Administration";
                 return BitConverter.ToString(bytes).Replace("-", "").ToUpper();
             }
         }
-        [HttpGet] // Ensure this is a GET request
+
+        // ── LOGOUT ──
+        [HttpGet]
         public ActionResult Logout()
         {
-            // 1. Clear session and cookie
             FormsAuthentication.SignOut();
             Session.Clear();
             Session.Abandon();
 
-            // 2. Explicitly clear the auth cookie
             var cookie = new HttpCookie(FormsAuthentication.FormsCookieName)
             {
                 Expires = DateTime.Now.AddDays(-1)
             };
+
             Response.Cookies.Add(cookie);
 
-            // 3. Force redirect to Guest Index
             return RedirectToAction("Index", "Guest");
         }
-        // ── STAGE 1: GET - Show Forgot Password Page ──
+
+        // ── FORGOT PASSWORD GET ──
         public ActionResult ForgotPassword()
         {
             return View();
         }
 
-        // ── STAGE 2: POST - Send Verification Code ──
+        // ── FORGOT PASSWORD POST ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult ForgotPassword(string email)
         {
             var user = db.UserAccounts.FirstOrDefault(u => u.Email == email);
+
             if (user == null)
             {
                 ModelState.AddModelError("", "Email not found.");
@@ -373,45 +386,56 @@ My Library System Administration";
             }
 
             string code = new Random().Next(1000, 9999).ToString();
+
             Session["ResetCode"] = code;
             Session["ResetEmail"] = email;
 
-            // Reuse your existing SMTP logic here
-            SendEmail(email, "Password Reset", $"Your 4-digit reset code is: {code}");
+            SendEmail(email, "Password Reset", "Your 4-digit reset code is: " + code);
 
             return RedirectToAction("VerifyResetCode");
         }
+
+        // ── SETTINGS GET ──
         [HttpGet]
         public ActionResult Settings()
         {
-            // Retrieve currently authenticated user context role
             string currentRole = Session["Role"] as string ?? "Guest";
 
             ViewBag.UserRole = currentRole;
             return View();
         }
-        // ── STAGE 3: GET/POST - Verify Code ──
-        public ActionResult VerifyResetCode() { return View(); }
 
+        // ── VERIFY RESET CODE GET ──
+        public ActionResult VerifyResetCode()
+        {
+            return View();
+        }
+
+        // ── VERIFY RESET CODE POST ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult VerifyResetCode(string inputCode)
         {
-            if (Session["ResetCode"]?.ToString() == inputCode)
+            if (Session["ResetCode"] != null && Session["ResetCode"].ToString() == inputCode)
                 return RedirectToAction("ResetPassword");
 
             ModelState.AddModelError("", "Invalid code.");
             return View();
         }
 
-        // ── STAGE 4: POST - Finalize Password Reset ──
-        public ActionResult ResetPassword() { return View(); }
+        // ── RESET PASSWORD GET ──
+        public ActionResult ResetPassword()
+        {
+            return View();
+        }
 
+        // ── RESET PASSWORD POST ──
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult ResetPassword(string newPassword)
         {
-            string email = Session["ResetEmail"]?.ToString();
+            string email = Session["ResetEmail"] != null ? Session["ResetEmail"].ToString() : null;
+
             var user = db.UserAccounts.FirstOrDefault(u => u.Email == email);
 
             if (user != null)
@@ -419,21 +443,24 @@ My Library System Administration";
                 user.PasswordHash = HashPassword(newPassword);
                 db.SubmitChanges();
 
-                // Clear session
                 Session["ResetCode"] = null;
                 Session["ResetEmail"] = null;
 
                 TempData["Success"] = "Password reset successful!";
                 return RedirectToAction("Login");
             }
+
             return View();
         }
-        // Add this private helper method to your AccountController
+
+        // ── SEND EMAIL HELPER ──
         private void SendEmail(string to, string subject, string body)
         {
-            // ⚠️ REPLACE THESE WITH YOUR REAL CREDENTIALS
             string mySenderEmail = "diepchi793@gmail.com";
-            string myAppPassword = "zwjjvknonjhuwnep";
+
+            // Đổi YOUR_GMAIL_APP_PASSWORD thành App Password Gmail của bạn.
+            // Không nên push mật khẩu thật lên GitHub.
+            string myAppPassword = "YOUR_GMAIL_APP_PASSWORD";
 
             using (MailMessage mail = new MailMessage())
             {
@@ -448,22 +475,27 @@ My Library System Administration";
                     smtp.UseDefaultCredentials = false;
                     smtp.Credentials = new NetworkCredential(mySenderEmail, myAppPassword);
                     smtp.EnableSsl = true;
+                    smtp.DeliveryMethod = SmtpDeliveryMethod.Network;
                     smtp.Send(mail);
                 }
             }
         }
+
         // ── PROFILE GET ──
         [Authorize]
         public ActionResult Profile()
         {
             int userId;
+
             if (!int.TryParse(User.Identity.Name, out userId))
                 return RedirectToAction("Logout");
 
             using (var freshDb = new LibraryDataContext())
             {
                 var user = freshDb.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-                if (user == null) return RedirectToAction("Logout");
+
+                if (user == null)
+                    return RedirectToAction("Logout");
 
                 var reader = freshDb.Readers.FirstOrDefault(r => r.UserId == userId);
                 var librarian = freshDb.Librarians.FirstOrDefault(l => l.UserId == userId);
@@ -478,6 +510,7 @@ My Library System Administration";
                     AvatarUrl = user.AvatarUrl,
                     Role = user.Role,
                     IsActive = user.IsActive,
+
                     Gender = reader != null ? reader.Gender : null,
                     DateOfBirth = reader != null ? reader.DateOfBirth : null,
                     ReaderCode = reader != null ? reader.ReaderCode : "—",
@@ -485,6 +518,7 @@ My Library System Administration";
                     MembershipExpiry = reader != null ? reader.MembershipExpiry : (DateTime?)null,
                     TotalBorrowed = reader != null ? reader.TotalBorrowed : 0,
                     TotalFines = reader != null ? reader.TotalFines : 0,
+
                     LibrarianCode = librarian != null ? librarian.LibrarianCode : null,
                     Department = librarian != null ? librarian.Department : null,
                     HireDate = librarian != null ? librarian.HireDate : (DateTime?)null
@@ -501,11 +535,14 @@ My Library System Administration";
         public ActionResult Profile(ProfileViewModel model)
         {
             int userId;
+
             if (!int.TryParse(User.Identity.Name, out userId))
                 return RedirectToAction("Logout");
 
             var user = db.UserAccounts.FirstOrDefault(u => u.UserId == userId);
-            if (user == null) return RedirectToAction("Logout");
+
+            if (user == null)
+                return RedirectToAction("Logout");
 
             if (!user.IsActive)
             {
@@ -524,6 +561,7 @@ My Library System Administration";
             db.SubmitChanges();
 
             var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+
             if (reader != null)
             {
                 reader.Gender = model.Gender;
@@ -537,6 +575,7 @@ My Library System Administration";
             TempData["Success"] = "Profile updated successfully!";
             return RedirectToAction("Profile");
         }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)

@@ -156,9 +156,6 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="VNPAY\VNPAY_CS_ASPX\Models\OrderInfo.cs" />
-    <Compile Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\TemporaryGeneratedFile_036C0B5B-1481-4323-8D20-8F5ADCB23D92.cs" />
-    <Compile Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\TemporaryGeneratedFile_5937a670-0e60-4077-877b-f7221da3dda1.cs" />
-    <Compile Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\TemporaryGeneratedFile_E7A71F73-0F8D-4B9B-B56E-8E70B10BC5D3.cs" />
     <Compile Include="VNPAY\VNPAY_CS_ASPX\VnPayLibrary.cs" />
     <Compile Include="VNPAY\VNPAY_CS_ASPX\vnpay_ipn.aspx.cs">
       <DependentUpon>vnpay_ipn.aspx</DependentUpon>
@@ -239,15 +236,8 @@
     <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
     <Content Include="Scripts\library.js" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\bin\log4net.dll" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\bin\log4net.xml" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\bin\VNPAY_CS_ASPX.dll" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\bin\VNPAY_CS_ASPX.pdb" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\Default.aspx" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\Global.asax" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.csproj.FileListAbsolute.txt" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.dll" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.pdb" />
     <Content Include="Views\Shared\EbookReader.cshtml" />
     <None Include="VNPAY\VNPAY_CS_ASPX\Scripts\jquery-1.7.1.intellisense.js" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\Scripts\jquery-1.7.1.js" />
@@ -320,12 +310,7 @@
     <Content Include="Views\Account\VerifyResetCode.cshtml" />
     <Content Include="Views\Account\ResetPassword.cshtml" />
     <Content Include="Views\Account\Settings.cshtml" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\bin\VNPAY_CS_ASPX.dll.config" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\log4net.config" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\DesignTimeResolveAssemblyReferences.cache" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\DesignTimeResolveAssemblyReferencesInput.cache" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.csproj.CopyComplete" />
-    <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.csproj.CoreCompileInputs.cache" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\VNPAY_CS_ASPX.csproj" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\Web.config" />
     <None Include="VNPAY\VNPAY_CS_ASPX\Web.Debug.config">
@@ -338,7 +323,6 @@
   <ItemGroup>
     <Folder Include="App_Data\" />
     <Folder Include="VNPAY\VNPAY_CS_ASPX\App_Data\" />
-    <Folder Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\TempPE\" />
     <Folder Include="VNPAY\VNPAY_CS_ASPX\Properties\" />
   </ItemGroup>
   <ItemGroup>
