@@ -10,7 +10,6 @@ namespace MyLibrary.Models.ViewModels
         public int SelectedCategoryId { get; set; }
         public BookDetailViewModel SelectedBook { get; set; }
 
-        // Add these two properties:
         public List<BookCardViewModel> DynamicBooks { get; set; }
         public string DynamicSectionTitle { get; set; }
     }
@@ -44,6 +43,10 @@ namespace MyLibrary.Models.ViewModels
         public string Language { get; set; }
         public int? PageCount { get; set; }
         public string PublisherName { get; set; }
+
+        // Reader/Guest preview and e-book
+        public string PreviewContent { get; set; }
+        public string EbookUrl { get; set; }
     }
 
     public class CategoryItem
