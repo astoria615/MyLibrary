@@ -522,7 +522,15 @@ namespace MyLibrary.Controllers
 
             return Json(comments, JsonRequestBehavior.AllowGet);
         }
+        public ActionResult ReadEbook(int id)
+        {
+            var book = db.Books.FirstOrDefault(b => b.BookId == id);
+            if (book == null || string.IsNullOrEmpty(book.EbookUrl))
+                return HttpNotFound();
 
+            ViewBag.EbookUrl = book.EbookUrl;
+            return View("~/Views/Shared/EbookReader.cshtml");
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing)

@@ -1103,7 +1103,7 @@ namespace MyLibrary.Controllers
             if (file == null || file.ContentLength <= 0)
                 return null;
 
-            var allowedExtensions = new[] { ".pdf", ".doc", ".docx", ".txt" };
+            var allowedExtensions = new[] { ".pdf", ".epub" };
             var extension = Path.GetExtension(file.FileName);
 
             if (string.IsNullOrEmpty(extension))

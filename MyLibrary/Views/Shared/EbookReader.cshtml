@@ -1,0 +1,127 @@
+﻿@{
+    Layout = null;
+    string ebookUrl = ViewBag.EbookUrl as string;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>E-Book Reader — My Library</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #11111b;
+            color: #cdd6f4;
+            font-family: 'Segoe UI', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: #1e1e2e;
+            border-bottom: 1px solid #313244;
+        }
+
+            #topbar .title {
+                font-weight: 700;
+                font-size: 15px;
+                color: #f5e0dc;
+            }
+
+            #topbar .controls {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+
+        .nav-btn {
+            padding: 7px 16px;
+            border-radius: 6px;
+            border: 1px solid #313244;
+            background: transparent;
+            color: #cdd6f4;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.15s;
+        }
+
+            .nav-btn:hover {
+                background: #313244;
+            }
+
+        #viewer {
+            flex: 1;
+            width: 100%;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%,-50%);
+            color: #7f849c;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="topbar">
+        <span class="title">📖 MY LIBRARY — E-Book Reader</span>
+        <div class="controls">
+            <button class="nav-btn" onclick="prevPage()">← Prev</button>
+            <span id="pageInfo" style="font-size:13px;color:#7f849c;">Loading...</span>
+            <button class="nav-btn" onclick="nextPage()">Next →</button>
+        </div>
+    </div>
+    <div id="loading">Loading book...</div>
+    <div id="viewer"></div>
+
+    <script>
+        var book = ePub("@ebookUrl");
+        var rendition = book.renderTo("viewer", {
+            width: "100%",
+            height: "100%",
+            spread: "none"
+        });
+        rendition.themes.register("light", {
+            "body": {
+                "background": "#f8f9fa !important",
+                "color": "#1a1a1a !important",
+                "font-family": "'Georgia', serif !important",
+                "line-height": "1.8 !important",
+                "padding": "20px 40px !important"
+            }
+        });
+        rendition.themes.select("light");
+
+        rendition.display().then(function() {
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        book.ready.then(function() {
+            document.getElementById('pageInfo').textContent = 'Use arrows to navigate';
+        });
+
+        function prevPage() { rendition.prev(); }
+        function nextPage() { rendition.next(); }
+
+        // Keyboard navigation
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextPage();
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prevPage();
+        });
+    </script>
+</body>
+</html>

@@ -248,6 +248,7 @@
     <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.csproj.FileListAbsolute.txt" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.dll" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\obj\Debug\VNPAY_CS_ASPX.pdb" />
+    <Content Include="Views\Shared\EbookReader.cshtml" />
     <None Include="VNPAY\VNPAY_CS_ASPX\Scripts\jquery-1.7.1.intellisense.js" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\Scripts\jquery-1.7.1.js" />
     <Content Include="VNPAY\VNPAY_CS_ASPX\Scripts\jquery-1.7.1.min.js" />

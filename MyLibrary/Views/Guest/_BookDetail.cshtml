@@ -129,7 +129,6 @@
                 &#9733;
             </span>
         }
-
         <span class="detail-reviews" style="margin-left: 8px; opacity: 0.5; font-size: 0.9rem;">
             (@Model.TotalReviews reviews)
         </span>
@@ -146,7 +145,6 @@
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Pages</span><span>@(Model.PageCount?.ToString() ?? "—")</span>
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Publisher</span><span>@(Model.PublisherName ?? "—")</span>
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Published</span><span>@(Model.PublishYear?.ToString() ?? "—")</span>
-
         <span class="meta-label" style="opacity: 0.5; font-weight: 500;">Available</span>
         <span>
             @if (Model.AvailableCopies > 0)
@@ -172,7 +170,6 @@
                 <button class="borrow-btn" onclick="addToBasket(@Model.BookId, '@Html.Raw(Model.Title.Replace("'", "\\'"))')">
                     + Add to Borrow Form
                 </button>
-
                 <a href="@Url.Action("BorrowForm","Reader")" class="borrow-btn"
                    style="display:block;text-align:center;text-decoration:none;margin-top:8px;
                           background:rgba(255,255,255,.15);color:#fff">
@@ -206,11 +203,22 @@
 
         @if (!string.IsNullOrWhiteSpace(Model.EbookUrl))
         {
-            <a href="@Url.Content(Model.EbookUrl)"
-               target="_blank"
-               class="preview-action-btn view-ebook-btn">
-                📄 View E-book
-            </a>
+            if (Model.EbookUrl.EndsWith(".epub", StringComparison.OrdinalIgnoreCase))
+            {
+                <a href="@Url.Action("ReadEbook", "Guest", new { id = Model.BookId })"
+                   target="_blank"
+                   class="preview-action-btn view-ebook-btn">
+                    📖 Read E-book
+                </a>
+            }
+            else
+            {
+                <a href="@Url.Content(Model.EbookUrl)"
+                   target="_blank"
+                   class="preview-action-btn view-ebook-btn">
+                    📄 View E-book
+                </a>
+            }
         }
     </div>
 
@@ -218,7 +226,6 @@
         <h4 style="font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; color: #ffffff;">
             💬 Reader Reviews
         </h4>
-
         <div id="reader-reviews-container">
             <p style="font-size: 12px; opacity: 0.7;">Loading comments...</p>
         </div>
@@ -233,15 +240,20 @@
                 <h3>@Model.Title - Preview</h3>
                 <button type="button" class="book-preview-close" onclick="closeBookPreviewModal()">×</button>
             </div>
-
             <div class="book-preview-body">
                 @Html.Raw(HttpUtility.HtmlEncode(Model.PreviewContent).Replace("\n", "<br />"))
             </div>
-
             @if (!string.IsNullOrWhiteSpace(Model.EbookUrl))
             {
                 <div class="book-preview-footer">
-                    <a href="@Url.Content(Model.EbookUrl)" target="_blank">Open E-book</a>
+                    @if (Model.EbookUrl.EndsWith(".epub", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <a href="@Url.Action("ReadEbook", "Guest", new { id = Model.BookId })" target="_blank">📖 Read E-Book</a>
+                    }
+                    else
+                    {
+                        <a href="@Url.Content(Model.EbookUrl)" target="_blank">📄 Open E-book</a>
+                    }
                 </div>
             }
         </div>
@@ -251,25 +263,16 @@
 <script>
     function openBookPreviewModal() {
         var modal = document.getElementById('bookPreviewModal');
-
-        if (modal) {
-            modal.style.display = 'flex';
-        }
+        if (modal) modal.style.display = 'flex';
     }
 
     function closeBookPreviewModal() {
         var modal = document.getElementById('bookPreviewModal');
-
-        if (modal) {
-            modal.style.display = 'none';
-        }
+        if (modal) modal.style.display = 'none';
     }
 
     document.addEventListener('click', function (e) {
         var modal = document.getElementById('bookPreviewModal');
-
-        if (modal && e.target === modal) {
-            closeBookPreviewModal();
-        }
+        if (modal && e.target === modal) closeBookPreviewModal();
     });
 </script>
