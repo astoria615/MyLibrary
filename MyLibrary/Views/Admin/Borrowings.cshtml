@@ -24,15 +24,51 @@
                         <td style="max-width:200px;font-size:12px">@string.Join(", ", b.BookTitles)</td>
                         <td>@b.BorrowDate.ToString("MMM dd, yyyy")</td>
                         <td>@b.DueDate.ToString("MMM dd, yyyy")</td>
-                        <td><span class="borrow-status status-@b.Status.ToLower()">@b.Status</span></td>
                         <td>
-                            <select class="form-input" style="width:130px;padding:4px"
-                                    onchange="updateBorrow(@b.BorrowingId, this.value)">
-                                @foreach (var s in new[] { "Pending", "Approved", "Returned", "Overdue", "Rejected", "Cancelled" })
-                                {
-                                    <option value="@s" @(b.Status == s ? "selected" : "")>@s</option>
-                                }
-                            </select>
+                            <span class="borrow-status status-@b.Status.ToLower()">@b.Status</span>
+                        </td>
+                        <td>
+                            @if (b.Status == "Returned" || b.Status == "Cancelled")
+                            {
+                                <span style="font-size:12px;color:var(--text-muted);padding:4px 8px;">Locked</span>
+                            }
+                            else
+                            {
+                                <select class="form-input" style="width:130px;padding:4px"
+                                        data-borrow-id="@b.BorrowingId"
+                                        data-original="@b.Status"
+                                        onchange="updateBorrow(@b.BorrowingId, this.value, this)">
+                                    @if (b.Status == "Pending")
+                                    {
+                                        <option value="Pending" selected>Pending</option>
+                                        <option value="Approved">Approved</option>
+                                        <option value="Rejected">Rejected</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    }
+                                    else if (b.Status == "Approved")
+                                    {
+                                        <option value="Approved" selected>Approved</option>
+                                        <option value="Returned">Returned</option>
+                                        <option value="Overdue">Overdue</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    }
+                                    else if (b.Status == "Overdue")
+                                    {
+                                        <option value="Overdue" selected>Overdue</option>
+                                        <option value="Returned">Returned</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    }
+                                    else if (b.Status == "Rejected")
+                                    {
+                                        <option value="Rejected" selected>Rejected</option>
+                                        <option value="Pending">Re-open to Pending</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@b.Status" selected>@b.Status</option>
+                                    }
+                                </select>
+                            }
                         </td>
                     </tr>
                 }
@@ -43,9 +79,48 @@
 
 @section Scripts {
     <script>
-function updateBorrow(id, status) {
-    fetch('/Admin/UpdateBorrowingStatus', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'borrowingId='+id+'&status='+encodeURIComponent(status) })
-    .then(r=>r.json()).then(d=>{ if(!d.success) alert('Failed'); });
-}
+        function updateBorrow(id, newStatus, selectEl) {
+            var oldStatus = selectEl.dataset.original || selectEl.querySelector('option[selected]')?.value;
+
+            if (!confirm('Change status to "' + newStatus + '"? This cannot be undone.')) {
+                // Revert dropdown to original value
+                selectEl.value = oldStatus;
+                return;
+            }
+
+            fetch('/Admin/UpdateBorrowingStatus', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'borrowingId=' + id + '&status=' + encodeURIComponent(newStatus)
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d.success) {
+                        // Update the status badge in the same row
+                        var row = selectEl.closest('tr');
+                        var badge = row.querySelector('.borrow-status');
+                        if (badge) {
+                            badge.textContent = newStatus;
+                            badge.className = 'borrow-status status-' + newStatus.toLowerCase();
+                        }
+                        // Save new value as original
+                        selectEl.dataset.original = newStatus;
+                    } else {
+                        alert('Failed to update status.');
+                        selectEl.value = oldStatus;
+                    }
+                })
+                .catch(function () {
+                    alert('Network error.');
+                    selectEl.value = oldStatus;
+                });
+        }
+
+        // Store original values on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('select[data-borrow-id]').forEach(function (sel) {
+                sel.dataset.original = sel.value;
+            });
+        });
     </script>
 }

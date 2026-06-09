@@ -356,9 +356,47 @@ namespace MyLibrary.Controllers
             }
 
             db.SubmitChanges();
+            // After db.SubmitChanges() for the new book
+            NotifyReadersNewBook(book.BookId, book.CategoryId, book.Title);
 
             TempData["Success"] = "Book added successfully.";
             return RedirectToAction("Books");
+        }
+        private void NotifyReadersNewBook(int bookId, int? categoryId, string bookTitle)
+        {
+            if (categoryId == null) return;
+
+            // Find readers who borrowed books in this category
+            var readerIds = (from bd in db.BorrowingDetails
+                             join b in db.Books on bd.BookId equals b.BookId
+                             join bw in db.Borrowings on bd.BorrowingId equals bw.BorrowingId
+                             where b.CategoryId == categoryId
+                             select bw.ReaderId).Distinct().ToList();
+
+            foreach (var readerId in readerIds)
+            {
+                var reader = db.Readers.FirstOrDefault(r => r.ReaderId == readerId);
+                if (reader == null) continue;
+
+                var user = db.UserAccounts.FirstOrDefault(u => u.UserId == reader.UserId && u.IsActive);
+                if (user == null) continue;
+
+                string subject = "📚 New Book Added — " + bookTitle;
+                string body = $"Hello {user.FullName},\n\nA new book matching your reading interests has been added to the library:\n\n\"{bookTitle}\"\n\nLog in to browse and add it to your borrow form.\n\nBest regards,\nMy Library System";
+
+                db.EmailNotifications.InsertOnSubmit(new EmailNotification
+                {
+                    UserId = user.UserId,
+                    NotificationType = "NewBook",
+                    Subject = subject,
+                    Body = body,
+                    Status = "Sent",
+                    SentAt = DateTime.Now,
+                    CreatedAt = DateTime.Now
+                });
+            }
+
+            db.SubmitChanges();
         }
 
         public ActionResult EditBook(int id)
@@ -565,9 +603,15 @@ namespace MyLibrary.Controllers
         {
             if (!IsAdmin()) return RedirectToLogin();
 
-            var cats = db.Categories
-                .OrderBy(c => c.CategoryName)
+            var cats = db.Categories.OrderBy(c => c.CategoryName).ToList();
+
+            var bookCounts = db.Books
+                .Where(b => b.IsActive && b.CategoryId != null)
+                .GroupBy(b => b.CategoryId)
+                .Select(g => new { CategoryId = g.Key, Count = g.Count() })
                 .ToList();
+
+            ViewBag.BookCounts = bookCounts.ToDictionary(x => x.CategoryId, x => x.Count);
 
             return View(cats);
         }
@@ -627,11 +671,15 @@ namespace MyLibrary.Controllers
             if (cat == null)
                 return Json(new { success = false, message = "Category not found." });
 
-            cat.IsActive = false;
+            // Check if any books use this category
+            bool hasBooks = db.Books.Any(b => b.CategoryId == id && b.IsActive);
+            if (hasBooks)
+                return Json(new { success = false, message = "Cannot delete — books are assigned to this category." });
 
+            db.Categories.DeleteOnSubmit(cat);
             db.SubmitChanges();
 
-            return Json(new { success = true, message = "Category deleted." });
+            return Json(new { success = true, message = "Category deleted successfully." });
         }
 
         // ══════════════════════════════════════

@@ -13,8 +13,8 @@
                         <td>#@f.FineId</td>
                         <td>@f.ReaderName</td>
                         <td>@f.FineType</td>
-                        <td>$@f.Amount.ToString("F2")</td>
-                        <td>$@f.PaidAmount.ToString("F2")</td>
+                        <td>@f.Amount.ToString("N0") VND</td>
+                        <td>@f.PaidAmount.ToString("N0") VND</td>
                         <td>@(f.PaymentMethod ?? "—")</td>
                         <td style="font-size:12px">@(f.TransactionId ?? "—")</td>
                         <td><span class="borrow-status status-@f.PaymentStatus.ToLower().Replace(" ","")">@f.PaymentStatus</span></td>

@@ -203,29 +203,48 @@ namespace MyLibrary.Controllers
         public ActionResult Notifications()
         {
             int userId = int.Parse(User.Identity.Name);
-            var reader = db.Readers.FirstOrDefault(r => r.UserId == userId);
+            var notes = new List<NotificationItem>();
 
-            var notes = new List<ReaderNotificationItem>();
+            var dbNotifs = db.EmailNotifications
+                .Where(n => n.UserId == userId && n.Status == "Sent")
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(10).ToList();
 
-            if (reader != null)
+            foreach (var n in dbNotifs)
             {
-                var dbNotifs = db.EmailNotifications
-                    .Where(n => n.UserId == userId && n.Status == "Sent")
-                    .OrderByDescending(n => n.CreatedAt)
-                    .Take(5).ToList();
+                bool isFine = n.NotificationType == "FineNotification";
+                bool isNewBook = n.NotificationType == "NewBook";
 
-                foreach (var n in dbNotifs)
+                notes.Add(new NotificationItem
                 {
-                    notes.Add(new ReaderNotificationItem
-                    {
-                        Type = n.NotificationType == "FineNotification" ? "fine" : "new",
-                        Message = n.Subject + ": " + (n.Body.Length > 80 ? n.Body.Substring(0, 80) + "..." : n.Body),
-                        Icon = n.NotificationType == "FineNotification" ? "💰" : "📚"
-                    });
-                }
+                    Type = isFine ? "fine" : "new",
+                    Icon = isFine ? "💰" : "📚",
+                    Message = n.Subject + ": " + (n.Body.Length > 80 ? n.Body.Substring(0, 80) + "..." : n.Body),
+                    Url = isFine ? "/Reader/MyFines" : "/Guest/Index"
+                });
             }
 
+            // Mark as read — save last seen timestamp to session
+            Session["NotifLastSeen"] = DateTime.Now;
+
             return PartialView("_Notifications", notes);
+        }
+
+        // New action to get unread count
+        [HttpGet]
+        public JsonResult GetUnreadNotifCount()
+        {
+            int userId = int.Parse(User.Identity.Name);
+            DateTime lastSeen = Session["NotifLastSeen"] != null
+                ? (DateTime)Session["NotifLastSeen"]
+                : DateTime.MinValue;
+
+            int count = db.EmailNotifications
+                .Count(n => n.UserId == userId &&
+                            n.Status == "Sent" &&
+                            n.CreatedAt > lastSeen);
+
+            return Json(new { count = count }, JsonRequestBehavior.AllowGet);
         }
         [HttpGet]
         public JsonResult GetBorrowBasketBooks(List<int> ids)

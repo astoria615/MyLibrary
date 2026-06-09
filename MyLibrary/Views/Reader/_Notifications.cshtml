@@ -1,16 +1,36 @@
 ﻿@model IEnumerable<MyLibrary.Models.ViewModels.NotificationItem>
 
+<div class="notif-panel-header">🔔 Notifications</div>
+
 @if (!Model.Any())
 {
-    <div class="notif-empty">No new notifications</div>
+    <div style="padding:24px;text-align:center;color:#7f849c;font-size:13px;">
+        ✅ No new notifications
+    </div>
 }
 else
 {
     foreach (var n in Model)
     {
-        <div class="notif-item notif-@n.Type">
-            <span class="notif-icon">@n.Icon</span>
-            <span class="notif-msg">@n.Message</span>
-        </div>
+        <a href="@(string.IsNullOrEmpty(n.Url) ? "#" : n.Url)"
+           class="notif-item notif-@n.Type"
+           style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;
+                  text-decoration:none;color:inherit;border-bottom:1px solid var(--border,#3a3a38);
+                  transition:background 0.15s;"
+           onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+           onmouseout="this.style.background='transparent'">
+            <span style="font-size:18px;flex-shrink:0;margin-top:1px;">@n.Icon</span>
+            <span style="font-size:12.5px;line-height:1.5;flex:1;color:var(--text,#e8e6e0);">@n.Message</span>
+            @if (n.Type == "fine")
+            {
+                <span style="font-size:10px;color:#e24b4a;font-weight:700;flex-shrink:0;
+                             background:rgba(226,75,74,0.15);padding:2px 6px;border-radius:4px;">FINE</span>
+            }
+            else
+            {
+                <span style="font-size:10px;color:#89b4fa;font-weight:700;flex-shrink:0;
+                             background:rgba(137,180,250,0.15);padding:2px 6px;border-radius:4px;">NEW</span>
+            }
+        </a>
     }
 }

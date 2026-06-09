@@ -144,6 +144,7 @@ namespace MyLibrary.Models.ViewModels
         public string Type { get; set; }
         public string Message { get; set; }
         public string Icon { get; set; }
+        public string Url { get; internal set; }
     }
 
     public class AdminDashboardViewModel

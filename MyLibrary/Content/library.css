@@ -1966,3 +1966,25 @@ a {
         .modal-actions .btn-primary:hover {
             background: #155699;
         }
+#notifPanel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    background: var(--surface, #1e1e2e);
+    border: 1px solid var(--border, #313244);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    z-index: 9999;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.notif-bell-btn {
+    background: transparent;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    position: relative;
+    padding: 4px 8px;
+}

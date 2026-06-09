@@ -169,13 +169,25 @@
     }
 </div>
 
-<div id="reviewModal" class="review-modal" style="display: none;">
-    <div class="review-modal-content">
-        <h3>Book Feedback & Review</h3>
-        <p style="font-size: 13px; margin-top: 6px; color: var(--text-muted);">How was your experience reading <strong id="modalBookTitle" style="color: var(--text);"></strong>?</p>
+<div id="reviewModal" class="review-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center; padding:20px;">
+    <div class="review-modal-content" style="
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        width: min(480px, 95vw);
+        padding: 28px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        color: var(--text);
+    ">
+        <h3 style="font-family: var(--font); font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 8px 0;">
+            📖 Book Feedback & Review
+        </h3>
+        <p style="font-size: 13px; margin: 0 0 20px 0; color: var(--text-muted);">
+            How was your experience reading <strong id="modalBookTitle" style="color: var(--text);"></strong>?
+        </p>
 
-        <div class="rating-group">
-            <label>Your Rating:</label>
+        <div class="rating-group" style="margin-bottom: 16px;">
+            <label style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); display: block; margin-bottom: 8px;">Your Rating:</label>
             <div class="star-rating">
                 <input type="radio" id="star5" name="rating" value="5" /><label for="star5" title="5 stars">★</label>
                 <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="4 stars">★</label>
@@ -185,17 +197,32 @@
             </div>
         </div>
 
-        <div class="comment-group" style="margin-top: 16px;">
-            <label for="reviewComment">Comment / Feedback:</label>
-            <textarea id="reviewComment" name="comment" rows="4" placeholder="Share your thoughts about this book..." class="form-control"></textarea>
+        <div class="comment-group" style="margin-bottom: 24px;">
+            <label for="reviewComment" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); display: block; margin-bottom: 8px;">Comment / Feedback:</label>
+            <textarea id="reviewComment" name="comment" rows="4"
+                      placeholder="Share your thoughts about this book..."
+                      style="width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; resize: vertical; font-family: var(--font); outline: none; box-sizing: border-box;">
+            </textarea>
         </div>
 
         <input type="hidden" id="modalBorrowingId" />
         <input type="hidden" id="modalBookId" />
 
-        <div class="modal-actions">
-            <button type="button" class="btn-secondary" onclick="submitReturnWithReview(true)">Skip & Return</button>
-            <button type="button" class="btn-primary" onclick="submitReturnWithReview(false)">Submit & Return</button>
+        <div class="modal-actions" style="display: flex; gap: 10px;">
+            <button type="button"
+                    onclick="submitReturnWithReview(true)"
+                    style="flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s;"
+                    onmouseover="this.style.background='var(--bg)'"
+                    onmouseout="this.style.background='transparent'">
+                Skip & Return
+            </button>
+            <button type="button"
+                    onclick="submitReturnWithReview(false)"
+                    style="flex: 2; padding: 11px; border-radius: 8px; border: none; background: var(--accent, #89b4fa); color: #1e1e2e; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s;"
+                    onmouseover="this.style.opacity='0.85'"
+                    onmouseout="this.style.opacity='1'">
+                Submit & Return
+            </button>
         </div>
     </div>
 </div>
